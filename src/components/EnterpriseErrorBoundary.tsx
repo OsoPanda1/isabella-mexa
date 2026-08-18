@@ -1,8 +1,8 @@
-import React from "react";
+import React, { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 interface State {
@@ -10,26 +10,29 @@ interface State {
   error: Error | null;
 }
 
-export class EnterpriseErrorBoundary extends React.Component<Props, State> {
-  override state: State = {
-    hasError: false,
-    error: null,
-  };
+export class EnterpriseErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null,
+    };
+  }
 
-  public static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ARGUS-RUNTIME-ERROR] Uncaught error in view boundary:", error, errorInfo);
   }
 
-  private handleReset = () => {
+  handleReset = () => {
     this.setState({ hasError: false, error: null });
     window.location.reload();
   };
 
-  override render() {
+  render() {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 border border-red-500/20 bg-red-500/5 rounded-2xl mx-4 my-8">
