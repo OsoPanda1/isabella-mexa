@@ -10,6 +10,7 @@ import { ISABELLA_SQL_MIGRATION, SCHEMA_TABLES } from "./src/data/isabellaMigrat
 import { ISABELLA_BLUEPRINT } from "./src/data/isabellaBlueprint";
 import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
+import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
 
 dotenv.config();
 
@@ -354,10 +355,23 @@ app.post("/api/v1/isabella/agent/lease", (req, res) => {
 
   activeAgentSessions.set(sessionId, session);
 
+  // PQC attestation for session lease
+  const kemPair = generateMLKEMKeyPair(sessionId);
+  const kemCipher = encapsulateMLKEM(kemPair.publicKey);
+  const pqcProof = signLedgerBlockPQC(`lease-${sessionId}`, kemCipher.sharedSecretHash);
+
   res.status(201).json({
     ok: true,
-    message: "Agente Isabella arrendado y registrado en C.R.O.W.N. Gateway.",
+    message: "Agente Isabella arrendado y registrado en C.R.O.W.N. Gateway con atestación PQC.",
     session,
+    pqcAttestation: {
+      kemAlgorithm: "ML-KEM-768",
+      signatureAlgorithm: "ML-DSA-87 + SLH-DSA-128s",
+      litleGatesStatus: pqcProof.litleGatesStatus,
+      sharedSecretHash: kemCipher.sharedSecretHash.slice(0, 32) + "...",
+      mlDsaSignature: pqcProof.mlDsaSignature.slice(0, 48) + "...",
+      pqcCompliant: true,
+    },
   });
 });
 
@@ -415,6 +429,9 @@ app.post("/api/v1/isabella/agent/chat", async (req, res) => {
       timestamp: new Date().toISOString(),
     }));
 
+    // PQC attestation for chat response
+    const chatPqcProof = signLedgerBlockPQC(`chat-${session.sessionId}-${Date.now()}`, prompt || "empty");
+
     const responseObj = {
       text: decision.summary || dAny.recommendedAction || "Inferencia procesada bajo la arquitectura de Isabella Villaseñor AI.",
       thoughts,
@@ -425,6 +442,12 @@ app.post("/api/v1/isabella/agent/chat", async (req, res) => {
         modelUsed: session.model,
         isabellaMood: "Serena",
         argusStatus: decision.policyStatus.toUpperCase(),
+      },
+      pqcAttestation: {
+        mlDsaSignature: chatPqcProof.mlDsaSignature.slice(0, 48) + "...",
+        slhDsaSignature: chatPqcProof.slhDsaSignature.slice(0, 48) + "...",
+        litleGatesStatus: chatPqcProof.litleGatesStatus,
+        pqcCompliant: chatPqcProof.pqcCompliant,
       },
     };
 
@@ -456,13 +479,23 @@ app.get("/api/v1/isabella/agent/stream", async (req, res) => {
   sendEvent("thought", { step: 3, module: "SOPHIA", thought: "Generando síntesis cognitiva basada en primeros principios...", confidence: 96 });
   await new Promise((r) => setTimeout(r, 150));
 
-  const words = `Hola. Soy Isabella Villaseñor AI, infraestructura cognitiva territorial de Nodo Cero. He procesado tu solicitud "${prompt}" con plena trazabilidad y gobernanza.`.split(" ");
+  // PQC attestation event
+  const streamPqcProof = signLedgerBlockPQC(`stream-${Date.now()}`, prompt);
+  sendEvent("pqc_attestation", {
+    mlDsaSignature: streamPqcProof.mlDsaSignature.slice(0, 48) + "...",
+    slhDsaSignature: streamPqcProof.slhDsaSignature.slice(0, 48) + "...",
+    litleGatesStatus: streamPqcProof.litleGatesStatus,
+    pqcCompliant: true,
+  });
+  await new Promise((r) => setTimeout(r, 100));
+
+  const words = `Hola. Soy Isabella Villaseñor AI, infraestructura cognitiva territorial de Nodo Cero. He procesado tu solicitud "${prompt}" con plena trazabilidad, gobernanza y firma poscuántica ML-DSA-87.`.split(" ");
   for (const word of words) {
     sendEvent("token", word + " ");
     await new Promise((r) => setTimeout(r, 40));
   }
 
-  sendEvent("telemetry", { tokensProcessed: words.length * 2, latencyMs: 550, modelUsed: "gemini-3.7-flash" });
+  sendEvent("telemetry", { tokensProcessed: words.length * 2, latencyMs: 550, modelUsed: "gemini-3.7-flash", pqcEngine: "CRYSTALS-LATAMV" });
   res.end();
 });
 

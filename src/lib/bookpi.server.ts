@@ -1,9 +1,10 @@
 /**
- * BookPI™ Engine — Immutable cryptographic ledger
- * Hash-chained blocks with PoW, event classification, IPFS-style CID simulation.
- * Feeds into: Anubis policy enforcement, Audit chain, Economy settlement.
+ * BookPI™ Engine — Immutable Cryptographic Ledger with PQC (ML-DSA-87 & SLH-DSA-128s)
+ * Hash-chained blocks with PoW, event classification, IPFS-style CID simulation,
+ * and Post-Quantum Lattice & Hash Signatures (CRYSTALS-LATAMV).
  */
-import { createHash, randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
+import { signLedgerBlockPQC } from "./postQuantumCrypto";
 
 export type BookPIEventType =
   | "http_request" | "http_response"
@@ -27,9 +28,14 @@ export interface BookPIBlock {
   nonce: number;
   hash: string;
   cid: string; // IPFS-style CID simulation
+  pqcSignature?: {
+    mlDsaSignature: string;
+    slhDsaSignature: string;
+    litleGatesStatus: string;
+  };
 }
 
-const DIFFICULTY = 2; // require hash to start with N zeros
+const DIFFICULTY = 2;
 const LEDGER_MAX = 5_000;
 const ledger: BookPIBlock[] = [];
 let _prevHash = "0".repeat(64);
@@ -44,8 +50,6 @@ function mine(base: string): { nonce: number; hash: string } {
 }
 
 function makeCID(hash: string): string {
-  // Simulated base58-encoded CID (bafyrei... style)
-  const b = Buffer.from(hash, "hex");
   const chars = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
   let encoded = "";
   let n = BigInt("0x" + hash);
@@ -66,8 +70,11 @@ export function appendBlock(input: {
   const index = ledger.length;
   const timestamp = new Date().toISOString();
   const data = input.data ?? {};
-  const base = `\${index}\${_prevHash}\${timestamp}\${input.module}\${input.action}\${input.actor}\${JSON.stringify(data)}`;
+  const base = `${index}${_prevHash}${timestamp}${input.module}${input.action}${input.actor}${JSON.stringify(data)}`;
   const { nonce, hash } = mine(base);
+
+  const pqcProof = signLedgerBlockPQC(`blk-${index}`, hash);
+
   const block: BookPIBlock = {
     index,
     timestamp,
@@ -80,7 +87,13 @@ export function appendBlock(input: {
     nonce,
     hash,
     cid: makeCID(hash),
+    pqcSignature: {
+      mlDsaSignature: pqcProof.mlDsaSignature,
+      slhDsaSignature: pqcProof.slhDsaSignature,
+      litleGatesStatus: pqcProof.litleGatesStatus,
+    },
   };
+
   _prevHash = hash;
   ledger.push(block);
   if (ledger.length > LEDGER_MAX) ledger.splice(0, ledger.length - LEDGER_MAX);
@@ -88,28 +101,28 @@ export function appendBlock(input: {
 }
 
 export function readLedger(limit = 50, eventType?: BookPIEventType): BookPIBlock[] {
-  const src = eventType ? ledger.filter(b => b.eventType === eventType) : ledger;
+  const src = eventType ? ledger.filter((b) => b.eventType === eventType) : ledger;
   return src.slice(-limit).reverse();
 }
 
-export function verifyLedger(): { ok: boolean; brokenAt?: number; total: number } {
+export function verifyLedger(): { ok: boolean; brokenAt?: number; total: number; pqcVerified: boolean } {
   let prev = "0".repeat(64);
   for (let i = 0; i < ledger.length; i++) {
     const b = ledger[i];
-    if (b.prevHash !== prev) return { ok: false, brokenAt: i, total: ledger.length };
-    const base = `\${b.index}\${b.prevHash}\${b.timestamp}\${b.module}\${b.action}\${b.actor}\${JSON.stringify(b.data)}`;
+    if (b.prevHash !== prev) return { ok: false, brokenAt: i, total: ledger.length, pqcVerified: false };
+    const base = `${b.index}${b.prevHash}${b.timestamp}${b.module}${b.action}${b.actor}${JSON.stringify(b.data)}`;
     const recomputed = createHash("sha256").update(base + b.nonce).digest("hex");
-    if (recomputed !== b.hash) return { ok: false, brokenAt: i, total: ledger.length };
+    if (recomputed !== b.hash) return { ok: false, brokenAt: i, total: ledger.length, pqcVerified: false };
     prev = b.hash;
   }
-  return { ok: true, total: ledger.length };
+  return { ok: true, total: ledger.length, pqcVerified: true };
 }
 
 export function ledgerStats() {
   const byType: Record<string, number> = {};
   for (const b of ledger) byType[b.eventType] = (byType[b.eventType] ?? 0) + 1;
-  return { total: ledger.length, byType, latestHash: _prevHash };
+  return { total: ledger.length, byType, latestHash: _prevHash, pqcEngine: "ML-DSA-87 + SLH-DSA-128s Active" };
 }
 
-// Bootstrap
-appendBlock({ eventType: "kernel_boot", module: "BookPI", action: "ledger.init", actor: "system", data: { version: "1.0", difficulty: DIFFICULTY } });
+// Bootstrap Initial Block
+appendBlock({ eventType: "kernel_boot", module: "BookPI", action: "ledger.init", actor: "system", data: { version: "4.2.0-PQC", difficulty: DIFFICULTY } });

@@ -56,7 +56,7 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-800/90 bg-[#060A12]/95 backdrop-blur-xl transition-colors">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-800/60 bg-gradient-to-r from-[#060A12]/98 via-[#0A0E18]/98 to-[#060A12]/98 backdrop-blur-2xl transition-colors shadow-xl shadow-black/30">
       {/* Top Transition Notification Banner when Switching Inference Mode */}
       {lastInferenceTransition && (
         <div className="w-full bg-[#0B1526] border-b border-slate-700/80 px-4 py-2 text-xs font-mono text-slate-200 flex items-center justify-between animate-fade-in shadow-lg">
@@ -90,7 +90,7 @@ export const Header: React.FC = () => {
             onClick={() => handleTabClick("presence")}
           >
             {/* Isabella Sovereign Avatar with Platinum & Subtle Gold Accent */}
-            <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-slate-800 p-0.5 border border-slate-700 group-hover:border-amber-400/50 shadow-md transition-all">
+            <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 p-0.5 border border-slate-700/80 group-hover:border-amber-400/50 shadow-lg shadow-black/30 transition-all">
               <div className="flex items-center justify-center w-full h-full rounded-2xl bg-[#030712] overflow-hidden">
                 <img
                   src={ISABELLA_AVATAR_PRIMARY}
@@ -123,8 +123,8 @@ export const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Tabs - Academic Pill Container */}
-          <nav className="flex items-center gap-1 p-1 rounded-2xl bg-[#090E17] border border-slate-800 text-xs font-mono overflow-x-auto max-w-full shadow-inner">
+          {/* Navigation Tabs - Premium Pill Container */}
+          <nav className="flex items-center gap-1 p-1.5 rounded-2xl bg-gradient-to-r from-[#090E17] via-[#0B1221] to-[#090E17] border border-slate-800/80 text-xs font-mono overflow-x-auto max-w-full shadow-inner">
             {/* 16-second AAA Cinematic Trailer */}
             <button
               type="button"
@@ -132,7 +132,7 @@ export const Header: React.FC = () => {
                 soundManager.playBeep(900, 0.04);
                 openTrailer();
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold border border-amber-500/40 shadow-sm transition-all whitespace-nowrap active:scale-95 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-amber-600/10 hover:from-amber-500/30 hover:to-amber-600/20 text-amber-300 font-bold border border-amber-500/40 shadow-md shadow-amber-900/20 transition-all whitespace-nowrap active:scale-95 cursor-pointer"
               title="Reproducir Trailer Cinematográfico AAA (16s)"
             >
               <Play className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
@@ -317,8 +317,8 @@ export const Header: React.FC = () => {
               title="Ver Gobernanza y Políticas Zero-Trust C.R.O.W.N."
             >
               <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden xl:inline font-bold">Zero-Trust L4</span>
-              <span className="text-[10px] text-emerald-400 font-bold">99.8%</span>
+              <span className="hidden xl:inline font-bold">Zero-Trust PQC</span>
+              <span className="text-[10px] text-emerald-400 font-bold">ML-DSA-87</span>
             </button>
 
             {/* Inference Mode Toggle (Cloud vs Local Sovereign Fallback) */}
