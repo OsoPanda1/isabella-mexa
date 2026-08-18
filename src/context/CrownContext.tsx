@@ -283,7 +283,7 @@ interface CrownContextValue {
   isProcessing: boolean;
   activeModuleId: CognitiveModuleId | null;
   routingHistory: RoutingDecision[];
-  speakText: (text: string) => void;
+  speakText: (text: string, options?: Partial<Pick<VoiceSettings, "pitch" | "rate" | "volume" | "language">>) => void;
   stopSpeech: () => void;
   startListening: () => void;
   stopListening: () => void;
@@ -397,13 +397,13 @@ export const CrownProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const speechTimeoutRef = useRef<any>(null);
   
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    pitch: 1.10, // Distinctly feminine, melodious and warm
-    rate: 0.96,
+    pitch: 1.08, // Premium feminine, melodious and warm without sounding synthetic
+    rate: 0.92,
     volume: 1.0,
     timbrePreset: "natural_fluida",
     preferredVoiceName: "",
     autoSpeak: true,
-    language: "es-ES",
+    language: "es-MX",
   });
 
   // Dynamic Voice Indexing from Browser with strict female prioritization
@@ -514,7 +514,7 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
 
   // Enhanced natural, fluid Speech Synthesis engine with human breath & cadence
   const speakText = useCallback(
-    (text: string) => {
+    (text: string, options?: Partial<Pick<VoiceSettings, "pitch" | "rate" | "volume" | "language">>) => {
       if (!speechSynthesisEnabled || typeof window === "undefined" || !("speechSynthesis" in window)) {
         return;
       }
@@ -577,22 +577,28 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
           const sentenceText = sentences[currentIndex];
           const utterance = new SpeechSynthesisUtterance(sentenceText);
 
-          // Configure feminine acoustic settings with warm, sweet and melodic pitch
-          const basePitch = voiceSettings.pitch || 1.10;
-          utterance.pitch = Math.min(1.8, Math.max(0.8, basePitch * pitchMultiplier));
-          utterance.rate = voiceSettings.rate || 0.96;
-          utterance.volume = voiceSettings.volume ?? 1.0;
+          // Configure premium feminine acoustic settings with warm, slower and more natural prosody.
+          const isQuestion = /[?¿]\s*$/.test(sentenceText);
+          const isLongClause = sentenceText.length > 96;
+          const basePitch = options?.pitch ?? voiceSettings.pitch ?? 1.10;
+          const baseRate = options?.rate ?? voiceSettings.rate ?? 0.92;
+          utterance.pitch = Math.min(1.72, Math.max(0.86, basePitch * pitchMultiplier + (isQuestion ? 0.025 : 0)));
+          utterance.rate = Math.min(1.08, Math.max(0.76, baseRate - (isLongClause ? 0.035 : 0)));
+          utterance.volume = options?.volume ?? voiceSettings.volume ?? 1.0;
 
           if (selectedVoice) {
             utterance.voice = selectedVoice;
-            utterance.lang = selectedVoice.lang || "es-ES";
+            utterance.lang = options?.language || selectedVoice.lang || voiceSettings.language || "es-MX";
+          } else {
+            utterance.lang = options?.language || voiceSettings.language || "es-MX";
           }
 
           utterance.onend = () => {
             currentIndex++;
             if (currentIndex < sentences.length) {
               // Natural conversational micro-pause between clauses
-              speechTimeoutRef.current = setTimeout(playNextSentence, 50);
+              const naturalPauseMs = /[.!?]\s*$/.test(sentenceText) ? 140 : 78;
+              speechTimeoutRef.current = setTimeout(playNextSentence, naturalPauseMs);
             } else {
               setIsSpeaking(false);
             }
