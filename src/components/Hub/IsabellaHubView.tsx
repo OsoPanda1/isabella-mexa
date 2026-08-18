@@ -37,7 +37,9 @@ import {
   IsabellaInputType,
 } from "../../contracts/isabella";
 
-type HubSubTab = "perception_runner" | "audit_trail" | "memory_scopes" | "tools_catalog" | "sql_migrations" | "blueprint";
+import { IsabellaAgent, AgentSessionInfo, AgentChatResponse } from "../../lib/isabella-agent-sdk";
+
+type HubSubTab = "perception_runner" | "agent_sdk" | "audit_trail" | "memory_scopes" | "tools_catalog" | "sql_migrations" | "blueprint";
 
 export const IsabellaHubView: React.FC = () => {
   const [subTab, setSubTab] = useState<HubSubTab>("perception_runner");
@@ -51,6 +53,13 @@ export const IsabellaHubView: React.FC = () => {
   const [selectedToolToRequest, setSelectedToolToRequest] = useState<string>("none");
   const [isRunningPerception, setIsRunningPerception] = useState(false);
   const [lastDecision, setLastDecision] = useState<IsabellaDecision | null>(null);
+
+  // Agent SDK & Leasing State
+  const [agentSession, setAgentSession] = useState<AgentSessionInfo | null>(null);
+  const [agentPrompt, setAgentPrompt] = useState("Genera un análisis de infraestructura soberana para Nodo Cero.");
+  const [agentResponse, setAgentResponse] = useState<AgentChatResponse | null>(null);
+  const [isLeasingAgent, setIsLeasingAgent] = useState(false);
+  const [isRunningAgentChat, setIsRunningAgentChat] = useState(false);
 
   // Live Data States
   const [auditLogs, setAuditLogs] = useState<IsabellaAuditLog[]>([]);
@@ -144,6 +153,49 @@ export const IsabellaHubView: React.FC = () => {
       console.error(err);
     } finally {
       setIsRunningPerception(false);
+    }
+  };
+
+  const handleLeaseAgent = async () => {
+    setIsLeasingAgent(true);
+    soundManager.playBeep(900, 0.04);
+
+    try {
+      const agent = new IsabellaAgent({
+        systemInstructions: "Eres Isabella Villaseñor AI, infraestructura cognitiva territorial gobernada.",
+        capabilities: {
+          allowImageGen: true,
+          allowVoiceSynthesis: true,
+          allowNetworkFetch: true,
+          securityLevel: "zero_trust_strict",
+        },
+      });
+
+      const session = await agent.lease();
+      setAgentSession(session);
+      soundManager.playSuccess();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLeasingAgent(false);
+    }
+  };
+
+  const handleRunAgentChat = async () => {
+    if (!agentPrompt.trim()) return;
+    setIsRunningAgentChat(true);
+    soundManager.playBeep(850, 0.03);
+
+    try {
+      const agent = new IsabellaAgent();
+      const res = await agent.chat(agentPrompt);
+      setAgentResponse(res);
+      soundManager.playSuccess();
+      fetchAuditLogs();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsRunningAgentChat(false);
     }
   };
 
@@ -299,7 +351,20 @@ export const IsabellaHubView: React.FC = () => {
             }`}
           >
             <Play className="w-3.5 h-3.5 text-amber-300" />
-            <span>Perception Runner (/api/v1/isabella)</span>
+            <span>Perception Runner</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSubTab("agent_sdk")}
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
+              subTab === "agent_sdk"
+                ? "bg-slate-800 text-slate-100 border border-slate-600 shadow-xs font-bold"
+                : "text-slate-400 hover:text-slate-200 hover:bg-slate-850"
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5 text-purple-400" />
+            <span>Agent SDK & Leasing</span>
           </button>
 
           <button
@@ -386,6 +451,173 @@ export const IsabellaHubView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* SUB-VIEW: AGENT SDK & LEASING */}
+      {subTab === "agent_sdk" && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column: Leasing & Config */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="p-5 rounded-2xl bg-[#050C1B] border border-purple-500/20 space-y-4 shadow-xl">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-mono font-bold text-purple-300 flex items-center gap-2">
+                  <Cpu className="w-4 h-4 text-purple-400" />
+                  AGENTE PROGRAMÁTICO ISABELLA
+                </h3>
+                <span className="text-[10px] font-mono bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded border border-purple-500/20">
+                  SDK Native API
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Orquestación programática de agentes autónomos con arrendamiento de sesión, streaming de pensamientos e intercepción de herramientas.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleLeaseAgent}
+                disabled={isLeasingAgent}
+                className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-500 text-white text-xs font-mono font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isLeasingAgent ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Arrendando Agente...</span>
+                  </>
+                ) : (
+                  <>
+                    <Key className="w-4 h-4" />
+                    <span>Arrendar Sesión de Agente (lease())</span>
+                  </>
+                )}
+              </button>
+
+              {/* Active Session Card */}
+              {agentSession && (
+                <div className="p-4 rounded-xl bg-[#030712] border border-purple-500/30 text-xs font-mono space-y-2">
+                  <div className="flex justify-between items-center text-purple-300 font-bold border-b border-slate-800 pb-2">
+                    <span>SESIÓN ACTIVA</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">
+                      {agentSession.status.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="text-slate-400 text-[11px] space-y-1">
+                    <p><span className="text-slate-500">ID:</span> <span className="text-slate-200">{agentSession.sessionId}</span></p>
+                    <p><span className="text-slate-500">Preset:</span> <span className="text-amber-300">{agentSession.preset}</span></p>
+                    <p><span className="text-slate-500">Modelo:</span> <span className="text-sky-300">{agentSession.model}</span></p>
+                    <p><span className="text-slate-500">Expiración:</span> <span className="text-slate-300">{new Date(agentSession.expiresAt).toLocaleTimeString()}</span></p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Prompt Execution Form */}
+            <div className="p-5 rounded-2xl bg-[#050C1B] border border-slate-800 space-y-4">
+              <h4 className="text-xs font-mono font-bold text-slate-300">INTERACCIÓN CON AGENTE (chat())</h4>
+              <textarea
+                value={agentPrompt}
+                onChange={(e) => setAgentPrompt(e.target.value)}
+                rows={3}
+                className="w-full bg-[#030712] border border-slate-800 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-purple-500/50"
+                placeholder="Escribe la instrucción para el agente..."
+              />
+              <button
+                type="button"
+                onClick={handleRunAgentChat}
+                disabled={isRunningAgentChat}
+                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-mono font-bold rounded-xl transition-all border border-slate-700 shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isRunningAgentChat ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
+                    <span>Procesando Pensamiento e Inferencia...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 text-purple-400" />
+                    <span>Ejecutar Instrucción en Agente</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Right Column: Thoughts & Tool Interception Stream */}
+          <div className="lg:col-span-7 space-y-4">
+            {agentResponse ? (
+              <div className="space-y-4">
+                {/* Agent Text Output */}
+                <div className="p-5 rounded-2xl bg-[#050C1B] border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono border-b border-slate-800 pb-2">
+                    <span className="font-bold text-slate-200 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-400" />
+                      RESPUESTA DE INFERENCIA DEL AGENTE
+                    </span>
+                    <span className="text-[10px] text-slate-400">{agentResponse.telemetry?.modelUsed}</span>
+                  </div>
+                  <p className="text-sm font-sans text-slate-200 leading-relaxed bg-[#030712] p-4 rounded-xl border border-slate-800/80">
+                    {agentResponse.text}
+                  </p>
+                </div>
+
+                {/* Cognitive Thoughts Stream */}
+                <div className="p-5 rounded-2xl bg-[#050C1B] border border-slate-800 space-y-3">
+                  <h4 className="text-xs font-mono font-bold text-slate-300 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-amber-300" />
+                    STREAM DE PENSAMIENTOS Y RAZONAMIENTO (thoughts)
+                  </h4>
+                  <div className="space-y-2">
+                    {agentResponse.thoughts?.map((t, idx) => (
+                      <div key={idx} className="p-3 rounded-xl bg-[#030712] border border-slate-800 text-xs font-mono flex items-start gap-3">
+                        <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-bold text-[10px]">
+                          {t.module}
+                        </span>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-slate-300">{t.thought}</p>
+                          <div className="flex justify-between text-[10px] text-slate-500">
+                            <span>Paso {t.step}</span>
+                            <span>Confianza: {t.confidence}%</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Intercepted Tool Calls */}
+                {agentResponse.tool_calls && agentResponse.tool_calls.length > 0 && (
+                  <div className="p-5 rounded-2xl bg-[#050C1B] border border-emerald-500/20 space-y-3">
+                    <h4 className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-emerald-400" />
+                      HERRAMIENTAS INTERCEPTADAS Y EJECUTADAS (tool_calls)
+                    </h4>
+                    <div className="space-y-2">
+                      {agentResponse.tool_calls.map((tc, idx) => (
+                        <div key={idx} className="p-3 rounded-xl bg-[#030712] border border-emerald-500/20 text-xs font-mono space-y-1">
+                          <div className="flex justify-between items-center text-emerald-300 font-bold">
+                            <span>{tc.name}</span>
+                            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded">
+                              {tc.status.toUpperCase()}
+                            </span>
+                          </div>
+                          <p className="text-slate-400 text-[11px]">{tc.result}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-12 rounded-2xl bg-[#050C1B] border border-slate-800 text-center space-y-3">
+                <Cpu className="w-12 h-12 text-slate-600 mx-auto" />
+                <h4 className="text-sm font-mono font-bold text-slate-400">Sin Ejecución de Agente</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Haz clic en "Arrendar Sesión" y ejecuta una instrucción para visualizar el stream de pensamientos e intercepción de herramientas en tiempo real.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* SUB-VIEW 1: PERCEPTION RUNNER */}
       {subTab === "perception_runner" && (

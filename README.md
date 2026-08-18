@@ -338,6 +338,9 @@ La API versionada oficial está disponible bajo el prefijo `/api/v1/isabella`:
 
 - `GET /api/v1/isabella`: Metadatos y diagnóstico de la infraestructura.
 - `POST /api/v1/isabella`: Procesamiento de percepciones y evaluación de intención.
+- `POST /api/v1/isabella/agent/lease`: Arrendamiento programático de sesión de agente autónomo (`IsabellaAgent`).
+- `POST /api/v1/isabella/agent/chat`: Ejecución programática de chat con stream de razonamiento (`thoughts`) e intercepción de herramientas (`tool_calls`).
+- `GET /api/v1/isabella/agent/stream`: Streaming Server-Sent Events (SSE) en tiempo real para tokens, pensamientos y telemetría.
 - `GET /api/v1/isabella/audit`: Registro criptográfico de auditoría.
 - `GET /api/v1/isabella/memory`: Consulta de memoria jerárquica.
 - `POST /api/v1/isabella/memory`: Registro de nuevo ítem en la memoria.
