@@ -10,7 +10,12 @@ interface State {
   error: Error | null;
 }
 
+// Ensure type declaration for React Class Component in React 19 typings
 export class EnterpriseErrorBoundary extends Component<Props, State> {
+  public declare state: State;
+  public declare props: Props;
+  public declare setState: Component<Props, State>["setState"];
+
   constructor(props: Props) {
     super(props);
     this.state = {
@@ -19,20 +24,20 @@ export class EnterpriseErrorBoundary extends Component<Props, State> {
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[ARGUS-RUNTIME-ERROR] Uncaught error in view boundary:", error, errorInfo);
   }
 
-  handleReset = () => {
+  private handleReset = () => {
     this.setState({ hasError: false, error: null });
     window.location.reload();
   };
 
-  render() {
+  public render(): ReactNode {
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 border border-red-500/20 bg-red-500/5 rounded-2xl mx-4 my-8">
