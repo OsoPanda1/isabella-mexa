@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-obsidian: #030712;
+    --bg-petroleum: #0b1526;
+    --text-pearl: #f8fafc;
+    --border-platinum: rgba(226, 232, 240, 0.15);
+    --accent-electric: #0066ff;
+    --accent-gold: #d4af37;
+  }
+
+  body {
+    background-color: #030712;
+    color: #f8fafc;
+    font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+  }
+
+  code, pre, kbd, .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+}
+
+/* Custom Enterprise Scrollbar in Petrol & Platinum */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(3, 7, 18, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 189, 248, 0.2);
+  border-radius: 9999px;
+  border: 1px solid rgba(226, 232, 240, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 102, 255, 0.45);
+}
+
+/* Enterprise Glassmorphism Card Utilities */
+.enterprise-card {
+  background: rgba(11, 21, 38, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.12);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+.enterprise-card-active {
+  background: rgba(15, 31, 53, 0.85);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 12px 35px -8px rgba(0, 102, 255, 0.2);
+}
+
