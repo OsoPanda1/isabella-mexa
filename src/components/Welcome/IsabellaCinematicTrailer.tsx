@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useCrown } from "../../context/CrownContext";
-import { Sparkles, Play, Volume2, VolumeX, X, ChevronRight } from "lucide-react";
+import { Sparkles, Volume2, VolumeX, ChevronRight, Crown, ShieldCheck, Waves } from "lucide-react";
 import { soundManager } from "../../utils/soundEffects";
 import { ISABELLA_MEDALLION_IMAGE } from "../../data/isabellaAvatar";
 
@@ -50,8 +50,8 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
         hasSpokenRef.current = true;
         try {
           speakText(
-            "Infraestructura cognitiva territorial concebida en Real del Monte. Soberanía, elegancia y tecnología para un futuro humano.",
-            { pitch: 1.05, rate: 0.95 }
+            "Soy Isabella Villaseñor. Una interfaz cognitiva territorial nacida en Real del Monte: voz serena, inteligencia soberana y tecnología humana para crear contigo.",
+            { pitch: 1.08, rate: 0.9 }
           );
         } catch {}
       }
@@ -83,6 +83,12 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!subBassGainRef.current || !audioCtxRef.current) return;
+    const target = audioMuted ? 0.0001 : 0.16;
+    subBassGainRef.current.gain.exponentialRampToValueAtTime(target, audioCtxRef.current.currentTime + 0.35);
+  }, [audioMuted]);
+
   // Canvas 60fps Particle & Fog Engine (Hidalgo Topography + Real del Monte Mist)
   useEffect(() => {
     if (!isOpen || !canvasRef.current) return;
@@ -102,12 +108,12 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
     window.addEventListener("resize", handleResize);
 
     // Particle Array
-    const particles = Array.from({ length: 60 }).map(() => ({
+    const particles = Array.from({ length: 120 }).map((_, index) => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      radius: Math.random() * 2.5 + 0.5,
-      speedX: (Math.random() - 0.5) * 0.4,
-      speedY: -Math.random() * 0.5 - 0.2,
+      radius: index % 9 === 0 ? Math.random() * 3.5 + 1 : Math.random() * 1.8 + 0.25,
+      speedX: (Math.random() - 0.5) * 0.55,
+      speedY: -Math.random() * 0.7 - 0.15,
       alpha: Math.random() * 0.6 + 0.2,
     }));
 
@@ -172,6 +178,21 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
         ctx.fill();
         ctx.shadowBlur = 0;
       });
+
+      // 4. CROWN neural halo lines, inspired by premium AI surfaces
+      const centerX = width / 2;
+      const centerY = height * 0.46;
+      for (let i = 0; i < 24; i++) {
+        const angle = (Math.PI * 2 * i) / 24 + stepCounter * 0.18;
+        const inner = Math.min(width, height) * 0.14;
+        const outer = Math.min(width, height) * (0.23 + Math.sin(stepCounter + i) * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(centerX + Math.cos(angle) * inner, centerY + Math.sin(angle) * inner);
+        ctx.lineTo(centerX + Math.cos(angle) * outer, centerY + Math.sin(angle) * outer);
+        ctx.strokeStyle = `rgba(56, 189, 248, ${0.05 + (i % 3) * 0.025})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
 
       animationFrameId = requestAnimationFrame(render);
     };
@@ -276,7 +297,8 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
       </div>
 
       {/* Main Cinematic Stage Overlay */}
-      <div className="relative z-10 max-w-4xl mx-auto px-6 text-center flex flex-col items-center justify-center space-y-8">
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center justify-center px-6 text-center">
+        <div className="absolute -inset-10 -z-10 rounded-[4rem] bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-transparent blur-3xl" />
         
         {/* Block 1 & 2: Hummingbird Medallion (Colibrí Mecánico de Oro y Platino) */}
         <div
@@ -291,8 +313,10 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
           }`}
         >
           {/* Gold Glowing Medallion Container */}
-          <div className="relative group inline-flex items-center justify-center p-3 rounded-full bg-gradient-to-b from-amber-400/20 via-slate-800/80 to-amber-600/30 border border-amber-400/50 shadow-[0_0_60px_rgba(245,158,11,0.35)] backdrop-blur-2xl">
-            <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full overflow-hidden border-2 border-amber-300/80 shadow-2xl relative">
+          <div className="group relative inline-flex items-center justify-center rounded-full border border-amber-300/50 bg-gradient-to-b from-amber-200/20 via-slate-950/80 to-sky-500/10 p-4 shadow-[0_0_110px_rgba(245,158,11,0.38)] backdrop-blur-2xl">
+            <div className="absolute -inset-10 rounded-full border border-sky-300/10" />
+            <div className="absolute -inset-6 animate-pulse rounded-full border border-amber-300/20" />
+            <div className="relative h-40 w-40 overflow-hidden rounded-full border-2 border-amber-200/80 shadow-2xl sm:h-52 sm:w-52">
               <img
                 src={ISABELLA_MEDALLION_IMAGE}
                 alt="Isabella AI - Colibrí Mecánico de Oro"
@@ -309,20 +333,27 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
 
         {/* Brand Header: ISABELLA AI */}
         <div
-          className={`space-y-2 transition-all duration-700 delay-100 ${
+          className={`mt-8 space-y-3 transition-all duration-700 delay-100 ${
             showBlock2
               ? "opacity-100 translate-y-0"
               : "opacity-0 translate-y-6"
           } ${isTransitioningUI ? "opacity-0 transition-opacity duration-500" : ""}`}
         >
           <div className="flex items-center justify-center gap-3">
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-widest text-slate-100 font-sans uppercase">
-              ISABELLA <span className="text-amber-400 font-serif italic text-2xl sm:text-4xl">AI</span>
+            <span className="hidden h-px w-16 bg-gradient-to-r from-transparent to-amber-300/70 sm:block" />
+            <h1 className="bg-gradient-to-r from-white via-sky-100 to-amber-200 bg-clip-text text-4xl font-black uppercase tracking-[0.28em] text-transparent sm:text-7xl">
+              ISABELLA <span className="font-serif italic tracking-normal text-amber-300">AI</span>
             </h1>
+            <span className="hidden h-px w-16 bg-gradient-to-l from-transparent to-sky-300/70 sm:block" />
           </div>
-          <p className="text-xs sm:text-sm font-mono text-slate-400 tracking-wider uppercase">
-            TAMV ONLINE — un futuro más humano y elegante.
+          <p className="text-xs font-mono uppercase tracking-[0.34em] text-slate-300 sm:text-sm">
+            CROWN Gateway · Voz soberana · Real del Monte
           </p>
+          <div className="mx-auto grid max-w-3xl grid-cols-1 gap-2 pt-2 text-[11px] font-mono text-slate-300 sm:grid-cols-3">
+            <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-3 py-1.5"><Crown className="mr-1 inline h-3 w-3 text-sky-300" />CROWN activo</span>
+            <span className="rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5"><ShieldCheck className="mr-1 inline h-3 w-3 text-emerald-300" />ARGUS verificado</span>
+            <span className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1.5"><Waves className="mr-1 inline h-3 w-3 text-amber-300" />Voz mejorada</span>
+          </div>
         </div>
 
         {/* Block 3 (0:09s): ORGULLOSAMENTE REALMONTENSES @ 50% Opacity */}
@@ -351,7 +382,7 @@ export const IsabellaCinematicTrailer: React.FC<IsabellaCinematicTrailerProps> =
         >
           <div className="px-6 py-2.5 rounded-full bg-slate-900/80 border border-amber-500/30 text-xs sm:text-sm font-mono text-amber-200/90 shadow-xl backdrop-blur-xl">
             <Sparkles className="w-4 h-4 text-amber-400 inline mr-2" />
-            <span>Un internet más ético, más seguro y más humano</span>
+            <span>Una interfaz de clase mundial: limpia, humana, segura y elegante</span>
           </div>
         </div>
 

@@ -11,14 +11,87 @@ import { ISABELLA_BLUEPRINT } from "./src/data/isabellaBlueprint";
 import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
 import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
+import {
+  ISABELLA_PLANS,
+  buildCheckoutUrl,
+  consumeUsage,
+  evaluateUsage,
+  getUsage,
+  setUserPlan,
+  stableUserId,
+  type IsabellaPlanId,
+  type MeteredCapability,
+} from "./src/lib/subscription.server";
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
+export { app };
 
 app.use(express.json({ limit: "10mb" }));
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), geolocation=(), payment=(), usb=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  next();
+});
 app.use(atlasRouter);
+
+const ipBuckets = new Map<string, { count: number; resetAt: number }>();
+function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const now = Date.now();
+  const key = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local").split(",")[0].trim();
+  const bucket = ipBuckets.get(key) || { count: 0, resetAt: now + 60_000 };
+  if (bucket.resetAt < now) {
+    bucket.count = 0;
+    bucket.resetAt = now + 60_000;
+  }
+  bucket.count += 1;
+  ipBuckets.set(key, bucket);
+  res.setHeader("X-RateLimit-Limit", "120");
+  res.setHeader("X-RateLimit-Remaining", String(Math.max(0, 120 - bucket.count)));
+  if (bucket.count > 120) {
+    return res.status(429).json({ ok: false, error: "Rate limit ARGUS activado. Intenta nuevamente en menos de un minuto." });
+  }
+  return next();
+}
+
+function getBillingIdentity(req: express.Request): { userId: string; plan?: string } {
+  const userId = stableUserId(
+    String(req.headers["x-isabella-user"] || req.body?.actorId || req.body?.userId || req.body?.sessionId || req.query.user || "")
+  );
+  const plan = String(req.headers["x-isabella-plan"] || req.body?.plan || req.query.plan || "");
+  return { userId, plan: plan || undefined };
+}
+
+function quotaGate(capability: MeteredCapability, amountFactory?: (req: express.Request) => number) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const { userId, plan } = getBillingIdentity(req);
+    const amount = amountFactory ? amountFactory(req) : 1;
+    const decision = consumeUsage(userId, capability, amount, plan);
+    res.setHeader("X-Isabella-Plan", decision.plan.id);
+    res.setHeader("X-Isabella-Usage-Reset", decision.resetAt);
+    res.setHeader("X-Isabella-Remaining-Messages", String(decision.remaining.messages));
+    if (!decision.allowed) {
+      return res.status(402).json({
+        ok: false,
+        error: decision.reason,
+        upgradeRequired: true,
+        plan: decision.plan,
+        usage: decision.usage,
+        remaining: decision.remaining,
+        resetAt: decision.resetAt,
+        checkout: buildCheckoutUrl("plus", userId),
+      });
+    }
+    (req as any).isabellaBilling = { userId, decision };
+    return next();
+  };
+}
 
 // Server-side Gemini API client (lazy initialization with telemetry header)
 let aiClient: GoogleGenAI | null = null;
@@ -106,6 +179,46 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/v1/billing/plans", (req, res) => {
+  const { userId, plan } = getBillingIdentity(req);
+  const current = evaluateUsage(userId, "chat", 1, plan);
+  res.json({
+    ok: true,
+    currency: "USD",
+    positioning: "Precios introductorios por debajo del promedio comercial para adopción temprana.",
+    plans: ISABELLA_PLANS.map((p) => ({ ...p, checkoutUrl: p.id === "free" || p.id === "custom" ? null : buildCheckoutUrl(p.id, userId) })),
+    current: { plan: current.plan, usage: getUsage(userId), remaining: current.remaining, resetAt: current.resetAt },
+  });
+});
+
+app.get("/api/v1/billing/usage", (req, res) => {
+  const { userId, plan } = getBillingIdentity(req);
+  const decision = evaluateUsage(userId, "chat", 1, plan);
+  res.json({ ok: true, userId, plan: decision.plan, usage: decision.usage, remaining: decision.remaining, resetAt: decision.resetAt });
+});
+
+app.post("/api/v1/billing/checkout", rateLimit, (req, res) => {
+  const { userId } = getBillingIdentity(req);
+  const requestedPlan = (req.body?.planId || req.body?.plan || "plus") as IsabellaPlanId;
+  if (requestedPlan === "free" || requestedPlan === "custom") {
+    return res.status(400).json({ ok: false, error: "Selecciona plus, premium, vip o enterprise para checkout automático." });
+  }
+  res.json({ ok: true, checkoutUrl: buildCheckoutUrl(requestedPlan, userId), planId: requestedPlan });
+});
+
+app.get("/api/v1/billing/checkout/mock", (req, res) => {
+  const plan = String(req.query.plan || "plus") as IsabellaPlanId;
+  const user = String(req.query.user || "anonymous");
+  const applied = setUserPlan(user, plan);
+  res.json({
+    ok: true,
+    mode: "mock-checkout",
+    message: "Checkout simulado para desarrollo/Vercel preview. Sustituir por Stripe Checkout en producción.",
+    user,
+    plan: applied,
+  });
+});
+
 // ============================================================================
 // ISABELLA CORE & NODO CERO CANONICAL API (v1)
 // Architecture: Perception -> Memory -> Policy Gate -> Decision -> Action -> Audit
@@ -138,7 +251,7 @@ app.get("/api/v1/isabella", (req, res) => {
 });
 
 // 2. POST /api/v1/isabella - Perception Processor (Next.js / Hub standard route)
-app.post("/api/v1/isabella", async (req, res) => {
+app.post("/api/v1/isabella", rateLimit, quotaGate("chat"), async (req, res) => {
   try {
     const body = req.body || {};
     
@@ -239,7 +352,7 @@ app.get("/api/v1/isabella/tools", (req, res) => {
 });
 
 // 7. POST /api/v1/isabella/tools/execute - Tool Execution Sandbox
-app.post("/api/v1/isabella/tools/execute", async (req, res) => {
+app.post("/api/v1/isabella/tools/execute", rateLimit, quotaGate("tool"), async (req, res) => {
   try {
     const { toolName, arguments: args = {} } = req.body;
     if (!toolName) {
@@ -327,7 +440,7 @@ interface AgentSessionRecord {
 const activeAgentSessions = new Map<string, AgentSessionRecord>();
 
 // 11. POST /api/v1/isabella/agent/lease - Lease an autonomous Isabella Agent
-app.post("/api/v1/isabella/agent/lease", (req, res) => {
+app.post("/api/v1/isabella/agent/lease", rateLimit, quotaGate("agent"), (req, res) => {
   const body = req.body || {};
   const sessionId = `isabella-agent-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
   const durationMinutes = body.leaseDurationMinutes || 60;
@@ -376,7 +489,7 @@ app.post("/api/v1/isabella/agent/lease", (req, res) => {
 });
 
 // 12. POST /api/v1/isabella/agent/chat - Programmatic Agent Chat Execution with Thought & Tool Interception
-app.post("/api/v1/isabella/agent/chat", async (req, res) => {
+app.post("/api/v1/isabella/agent/chat", rateLimit, quotaGate("chat"), async (req, res) => {
   try {
     const { sessionId, prompt, contextPayload } = req.body || {};
     let session = sessionId ? activeAgentSessions.get(sessionId) : null;
@@ -526,7 +639,7 @@ function buildGenerativeArtworkUrl(prompt: string, style = "cyber_ethereal", asp
 }
 
 // Image Generation API: Gemini Image Generation with Generative Flux Engine
-app.post("/api/isabella/generate-image", async (req, res) => {
+app.post("/api/isabella/generate-image", rateLimit, quotaGate("image"), async (req, res) => {
   const startTime = Date.now();
   const { prompt, style = "cyber_ethereal", aspectRatio = "1:1" } = req.body;
 
@@ -638,7 +751,7 @@ app.post("/api/isabella/generate-image", async (req, res) => {
 });
 
 // Text-to-Speech API
-app.post("/api/isabella/tts", async (req, res) => {
+app.post("/api/isabella/tts", rateLimit, quotaGate("voice", (req) => Math.ceil(String(req.body?.text || "").length / 14)), async (req, res) => {
   const startTime = Date.now();
   const { text, pitch = 1.05, rate = 1.0, timbre = "calida" } = req.body;
 
@@ -700,7 +813,7 @@ app.post("/api/isabella/tts", async (req, res) => {
 });
 
 // Cognitive Processing API: CROWN routing + Multi-module cognitive synthesis
-app.post("/api/isabella/process", async (req, res) => {
+app.post("/api/isabella/process", rateLimit, quotaGate("chat"), async (req, res) => {
   const startTime = Date.now();
   const {
     input,
@@ -1026,4 +1139,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}
