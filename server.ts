@@ -394,36 +394,37 @@ app.post("/api/v1/isabella/agent/chat", async (req, res) => {
     };
 
     const decision = await processPerception(perception);
+    const dAny = decision as any;
 
     // Build thoughts stream
     const thoughts = [
-      { step: 1, module: "ISA" as const, thought: "Interpretación semántica e intención del usuario procesada con resonancia afectiva.", confidence: 96, timestamp: new Date().toISOString() },
-      { step: 2, module: "ARGUS" as const, thought: `Evaluación Zero-Trust ejecutada. Estado de seguridad: ${decision.telemetry?.argusSafety?.status || "CLEAR"}.`, confidence: 99, timestamp: new Date().toISOString() },
+      { step: 1, module: "ISA" as const, thought: "Interpretación semántica e intención del usuario procesada con resonancia afectiva.", confidence: Math.floor((decision.confidence || 0.95) * 100), timestamp: new Date().toISOString() },
+      { step: 2, module: "ARGUS" as const, thought: `Evaluación Zero-Trust ejecutada. Estado de seguridad: ${decision.policyStatus.toUpperCase()} (Riesgo: ${decision.riskLevel}).`, confidence: 99, timestamp: new Date().toISOString() },
       { step: 3, module: "SOPHIA" as const, thought: `Inferencia dialéctica y síntesis de respuesta optimizada en modo ${session.preset}.`, confidence: 95, timestamp: new Date().toISOString() },
       { step: 4, module: "ORION" as const, thought: "Estructuración de artefactos y herramientas autorizadas.", confidence: 98, timestamp: new Date().toISOString() },
     ];
 
     // Intercept tool calls
-    const toolCalls = (decision.actionPlan?.toolsToInvoke || []).map((toolName: string, idx: number) => ({
+    const toolCalls = (decision.toolCalls || dAny.actionPlan?.toolsToInvoke || []).map((tc: any, idx: number) => ({
       id: `tool-${Date.now()}-${idx}`,
-      name: toolName,
-      args: { input: prompt },
+      name: typeof tc === "string" ? tc : tc.toolName,
+      args: typeof tc === "string" ? { input: prompt } : tc.arguments,
       status: "approved" as const,
-      result: `Resultado ejecutado para ${toolName}`,
-      argusReason: "Herramienta autorizada por política C.R.O.W.N.",
+      result: `Resultado ejecutado para ${typeof tc === "string" ? tc : tc.toolName}`,
+      argusReason: decision.policyReason || "Herramienta autorizada por política C.R.O.W.N.",
       timestamp: new Date().toISOString(),
     }));
 
     const responseObj = {
-      text: decision.recommendedAction || "Inferencia procesada bajo la arquitectura de Isabella Villaseñor AI.",
+      text: decision.summary || dAny.recommendedAction || "Inferencia procesada bajo la arquitectura de Isabella Villaseñor AI.",
       thoughts,
       tool_calls: toolCalls,
       telemetry: {
         tokensProcessed: Math.floor((prompt || "").length * 1.35) + 120,
-        latencyMs: decision.telemetry?.orionExecution?.executionSteps?.length ? 450 : 280,
+        latencyMs: 320,
         modelUsed: session.model,
-        isabellaMood: decision.telemetry?.isaResonance?.emotionalTone || "Serena",
-        argusStatus: decision.telemetry?.argusSafety?.status || "CLEAR",
+        isabellaMood: "Serena",
+        argusStatus: decision.policyStatus.toUpperCase(),
       },
     };
 
