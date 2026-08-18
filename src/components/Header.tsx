@@ -20,6 +20,7 @@ import {
   X,
   Search,
   Play,
+  Wallet,
 } from "lucide-react";
 import { soundManager } from "../utils/soundEffects";
 import { CrownSystemState } from "../types";
@@ -275,6 +276,20 @@ export const Header: React.FC = () => {
             >
               <Activity className="w-3.5 h-3.5 text-slate-300" />
               <span>Dossier</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabClick("cattleya_finance")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                activeView === "cattleya_finance"
+                  ? "bg-slate-800 text-slate-100 font-bold border border-slate-600 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              }`}
+              title="CATTLEYA™ Finance Hub & Tarjetas Virtuales TAMV DM-X4™"
+            >
+              <Wallet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cattleya</span>
             </button>
 
             <button

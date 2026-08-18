@@ -143,7 +143,8 @@ export type ActiveViewId =
   | "presentation"
   | "hub"
   | "traceability"
-  | "codex";
+  | "codex"
+  | "cattleya_finance";
 
 export type InferenceMode = "cloud_federated" | "local_sovereign";
 
