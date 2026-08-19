@@ -76,9 +76,9 @@ export function getProduct(id: string): Product | undefined {
 
 export function createOrder(userId: string, productId: string): Order {
   const product = products.find(p => p.id === productId);
-  if (!product) throw new Error(`Product \${productId} not found`);
+  if (!product) throw new Error(`Product ${productId} not found`);
   const order: Order = {
-    id: uid(`order\${userId}\${productId}`),
+    id: uid(`order${userId}${productId}`),
     productId,
     userId,
     total: product.price,
@@ -94,7 +94,7 @@ export function createOrder(userId: string, productId: string): Order {
 
 export function payOrder(orderId: string): Order {
   const order = orders.find(o => o.id === orderId);
-  if (!order) throw new Error(`Order \${orderId} not found`);
+  if (!order) throw new Error(`Order ${orderId} not found`);
   order.status = "paid";
   order.paidAt = new Date().toISOString();
   appendBlock({ eventType: "order_paid", module: "Lucrum", action: "order.pay", actor: order.userId, data: { orderId, total: order.total } });

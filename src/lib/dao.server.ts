@@ -86,14 +86,14 @@ export function createProposal(authorId: string, namespaceId: string, title: str
 
 export function castVote(proposalId: string, voterId: string, choice: VoteChoice): { proposal: DaoProposal; vote: DaoVote } {
   const p = proposals.find(x => x.id === proposalId);
-  if (!p) throw new Error(`Proposal \${proposalId} not found`);
+  if (!p) throw new Error(`Proposal ${proposalId} not found`);
   if (p.status !== "active") throw new Error("Proposal is not active");
   if (p.voterIds.has(voterId)) throw new Error("Already voted");
 
   p.voterIds.add(voterId);
   p.votes[choice]++;
 
-  const v: DaoVote = { id: uid(`\${proposalId}\${voterId}`), proposalId, voterId, choice, weight: 1, ts: new Date().toISOString() };
+  const v: DaoVote = { id: uid(`${proposalId}${voterId}`), proposalId, voterId, choice, weight: 1, ts: new Date().toISOString() };
   voteLog.push(v);
 
   appendBlock({ eventType: "dao_vote", module: "KORIMA", action: "vote.cast", actor: voterId, data: { proposalId, choice } });

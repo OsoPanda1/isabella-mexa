@@ -43,7 +43,7 @@ function jaccard(a: Set<string>, b: Set<string>): number {
 }
 
 export function registerEpisode(actor: string, input: string, output: string, context?: string, emotionalState?: string): Episode {
-  const id = createHash("sha256").update(`\${Date.now()}\${Math.random()}`).digest("hex").slice(0, 16);
+  const id = createHash("sha256").update(`${Date.now()}${Math.random()}`).digest("hex").slice(0, 16);
   const ep: Episode = { id, ts: new Date().toISOString(), actor, input, output, tokens: tokenize(input), emotionalState, context };
   episodes.push(ep);
   if (episodes.length > EPISODE_MAX) episodes.splice(0, episodes.length - EPISODE_MAX);
@@ -90,7 +90,7 @@ export function getRecommendations(userId?: string, context?: string): IsabellaR
   if (context) {
     const q = tokenize(context);
     recs = recs.map(r => {
-      const rtokens = tokenize(`\${r.title} \${r.subtitle} \${r.highlightPillar ?? ""}`);
+      const rtokens = tokenize(`${r.title} ${r.subtitle} ${r.highlightPillar ?? ""}`);
       const boost = jaccard(q, rtokens);
       return { ...r, confidence: Math.min(1, r.confidence + boost * 0.15) };
     }).sort((a, b) => b.confidence - a.confidence);
@@ -119,10 +119,10 @@ export function moderateContent(content: string, context?: string): ModerationRe
   let blocked = false;
 
   for (const p of BLOCKED_TERMS) {
-    if (p.test(content)) { blocked = true; reasons.push(`Blocked: \${p.source}`); }
+    if (p.test(content)) { blocked = true; reasons.push(`Blocked: ${p.source}`); }
   }
   for (const p of FLAG_TERMS) {
-    if (p.test(content)) reasons.push(`Flagged: \${p.source}`);
+    if (p.test(content)) reasons.push(`Flagged: ${p.source}`);
   }
 
   const confidence = blocked ? 0.95 : reasons.length > 0 ? 0.7 : 0.98;

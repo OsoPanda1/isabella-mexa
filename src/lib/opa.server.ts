@@ -47,7 +47,7 @@ function decide(input: PolicyInput): PolicyDecision {
     if (!input.actor.scopes?.includes(input.required_scope)) {
       return {
         allow: false,
-        reason: `missing required scope: \${input.required_scope}`,
+        reason: `missing required scope: ${input.required_scope}`,
         policy_id: "atlas.authz.scope",
         evaluated_at,
       };
@@ -60,7 +60,7 @@ function decide(input: PolicyInput): PolicyDecision {
     if (d.state !== "validated" && d.state !== "published") {
       return {
         allow: false,
-        reason: `document state \${d.state} not eligible for publication`,
+        reason: `document state ${d.state} not eligible for publication`,
         policy_id: "atlas.publication.state",
         evaluated_at,
       };
@@ -122,7 +122,7 @@ export async function evaluate(input: PolicyInput): Promise<PolicyDecision> {
 
   recordAudit({
     actor: input.actor.id,
-    action: `policy.\${input.action}`,
+    action: `policy.${input.action}`,
     policy: d.policy_id,
     payload: { allow: d.allow, reason: d.reason },
   });
