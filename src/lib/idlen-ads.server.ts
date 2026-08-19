@@ -1,10 +1,15 @@
 /**
- * Isabella Villaseñor AI — Idlen Chat Ads Integration (Server-Side)
+ * Isabella Villaseñor AI — Idlen Chat Ads Integration (Server-Sive)
  * Monetización contextual de conversaciones con ads nativos gobernados por ARGUS.
+ *
+ * Attribution checklist (per Idlen docs):
+ * - Stable sessionId for the same session lifecycle
+ * - One ad fetch per render cycle (no duplicate impressions)
+ * - Impression auto-tracked by getAd()
+ * - Click tracked explicitly via trackClick()
  */
 import { IdlenChatAds } from "@idlen/chat-sdk/server";
-import { extractContextFromText } from "@idlen/chat-sdk";
-import type { ChatAd, ChatAdRequest, ChatContext, ChatAdFormat } from "@idlen/chat-sdk";
+import type { ChatAdRequest, ChatContext, ChatAdFormat } from "@idlen/chat-sdk";
 
 const IDLEN_API_KEY = process.env.IDLEN_API_KEY || "";
 const IDLEN_ENABLED = IDLEN_API_KEY.startsWith("idl_pk_");
@@ -35,6 +40,7 @@ export interface IsabellaAdResult {
     html: string;
     plainText: string;
     impressionToken: string;
+    publisherId: string;
     requestId: string;
   };
   context?: ChatContext;
@@ -43,12 +49,11 @@ export interface IsabellaAdResult {
 
 /**
  * Obtiene un ad contextual para una conversación de Isabella.
- * Extrae contexto del mensaje del usuario usando el diccionario local del SDK.
+ * Impression is auto-tracked by getAd() per Idlen docs.
  */
 export async function getIsabellaAd(params: {
   sessionId: string;
   userMessage: string;
-  conversationHistory?: Array<{ role: string; content: string }>;
   format?: ChatAdFormat;
 }): Promise<IsabellaAdResult> {
   const client = getClient();
@@ -57,7 +62,6 @@ export async function getIsabellaAd(params: {
   }
 
   try {
-    // Extract context from user message
     const context = client.extractContext(params.userMessage);
 
     const request: ChatAdRequest = {
@@ -72,6 +76,7 @@ export async function getIsabellaAd(params: {
       maxAds: 1,
     };
 
+    // getAd() auto-tracks the impression per Idlen docs
     const ad = await client.getAd(request);
 
     if (!ad) {
@@ -94,6 +99,7 @@ export async function getIsabellaAd(params: {
         html: ad.renderHTML(),
         plainText: ad.renderPlainText(),
         impressionToken: ad.impressionToken,
+        publisherId: ad.publisherId,
         requestId: ad.requestId,
       },
       context,
@@ -104,8 +110,30 @@ export async function getIsabellaAd(params: {
 }
 
 /**
- * Obtiene un ad para el endpoint de procesamiento cognitivo de Isabella.
- * Solo se inserta un ad cada ~3 interacciones para no degradar la experiencia.
+ * Server-side click tracking per Idlen docs:
+ *   await ads.trackClick(ad.adId, ad.publisherId, ad.requestId);
+ */
+export async function trackIdlenClick(params: {
+  adId: string;
+  publisherId: string;
+  requestId: string;
+}): Promise<{ tracked: boolean; error?: string }> {
+  const client = getClient();
+  if (!client) {
+    return { tracked: false, error: "IDLEN_NOT_CONFIGURED" };
+  }
+
+  try {
+    await client.trackClick(params.adId, params.publisherId, params.requestId);
+    return { tracked: true };
+  } catch (err: any) {
+    return { tracked: false, error: err?.message || String(err) };
+  }
+}
+
+/**
+ * Ad con frecuencia controlada: solo cada 3er mensaje.
+ * Una sola fetch por ciclo de render (no duplicate impressions).
  */
 export async function maybeAppendAd(
   responseText: string,
@@ -115,7 +143,6 @@ export async function maybeAppendAd(
     messageCount: number;
   },
 ): Promise<{ text: string; ad?: IsabellaAdResult["ad"] }> {
-  // Ad frequency: every 3rd user message (no spam)
   if (params.messageCount % 3 !== 0 || params.messageCount === 0) {
     return { text: responseText };
   }
@@ -130,14 +157,10 @@ export async function maybeAppendAd(
     return { text: responseText };
   }
 
-  // Append ad as a subtle sponsored recommendation
   const adBlock = `\n\n---\n${adResult.ad.markdown}`;
   return { text: responseText + adBlock, ad: adResult.ad };
 }
 
-/**
- * Estado del módulo Idlen.
- */
 export function getIdlenStatus() {
   return {
     configured: IDLEN_ENABLED,

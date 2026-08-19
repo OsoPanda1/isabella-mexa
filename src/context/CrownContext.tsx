@@ -346,6 +346,17 @@ export const CrownProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
   const [lastInferenceTransition, setLastInferenceTransition] = useState<InferenceTransitionEvent | null>(null);
 
+  // Stable sessionId for Idlen attribution — persists across the browser session
+  const [sessionId] = useState<string>(() => {
+    try {
+      const existing = sessionStorage.getItem("isabella_idlen_session");
+      if (existing) return existing;
+    } catch { /* sessionStorage unavailable */ }
+    const id = `isabella-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    try { sessionStorage.setItem("isabella_idlen_session", id); } catch { /* ignore */ }
+    return id;
+  });
+
   // Check if welcome should be shown on initial mount
   useEffect(() => {
     try {
@@ -775,6 +786,7 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
             input: trimmed,
             history: messages.slice(-8),
             activePreset,
+            sessionId,
             crownConfig: {
               isaWeight: modules.ISA.parameters.weight,
               sophiaWeight: modules.SOPHIA.parameters.weight,

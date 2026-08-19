@@ -232,9 +232,21 @@ export const MessageStream: React.FC<MessageStreamProps> = ({ messages }) => {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => {
-                      if (typeof window !== "undefined" && window.idlen) {
-                        window.idlen("click", msg.sponsoredContent!.adId);
+                      const sc = msg.sponsoredContent!;
+                      // Client-side: pixel click tracking
+                      if (typeof window !== "undefined" && typeof window.idlen === "function") {
+                        try { window.idlen("click", sc.adId); } catch { /* pixel not loaded */ }
                       }
+                      // Server-side: reliable click tracking via Idlen SDK
+                      fetch("/api/v1/idlen/click", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          adId: sc.adId,
+                          publisherId: sc.publisherId,
+                          requestId: sc.requestId,
+                        }),
+                      }).catch(() => { /* non-blocking */ });
                     }}
                     className="group block rounded-2xl border border-slate-800/80 bg-[#081220]/80 hover:bg-[#0B1A2E] p-4 transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-950/20"
                   >

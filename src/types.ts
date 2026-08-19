@@ -121,6 +121,8 @@ export interface TerminalMessage {
     ctaText: string;
     ctaUrl: string;
     advertiserName: string;
+    publisherId: string;
+    requestId: string;
   };
 }
 
@@ -218,4 +220,15 @@ export interface CrownSystemState {
   inferenceMode: InferenceMode;
   securityGovernance: SecurityGovernanceLevel;
   lastInferenceTransition: InferenceTransitionEvent | null;
+}
+
+declare global {
+  interface Window {
+    idlen: {
+      (command: "init", appId: string): void;
+      (command: "track", event: string, data?: Record<string, unknown>): void;
+      (command: "click", adId: string): void;
+      (command: "impression", token: string): void;
+    };
+  }
 }

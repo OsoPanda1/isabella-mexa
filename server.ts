@@ -842,11 +842,18 @@ app.post("/api/isabella/process", rateLimit, authenticate, quotaGate("chat"), as
     history = [],
     crownConfig = {},
     activePreset = "prime",
+    sessionId: clientSessionId,
   } = req.body;
 
   if (!input || typeof input !== "string") {
     return res.status(400).json({ error: "Missing or invalid prompt input." });
   }
+
+  // Stable sessionId: use client-provided ID (generated once per browser session)
+  // Falls back to server-generated if client doesn't send one
+  const sessionId = (typeof clientSessionId === "string" && clientSessionId.length > 0)
+    ? clientSessionId
+    : `session-${Date.now()}`;
 
   const ai = getGenAI();
 
@@ -980,7 +987,7 @@ CRITICAL: Return a valid JSON response strictly following this schema:
       // Idlen: inject contextual ad into Gemini response
       const msgCount = (history?.length || 0) + 1;
       const { text: replyWithAd, ad: geminiAd } = await maybeAppendAd(parsedData.reply || "", {
-        sessionId: `session-${Date.now()}`,
+        sessionId,
         userMessage: input,
         messageCount: msgCount,
       });
@@ -993,6 +1000,8 @@ CRITICAL: Return a valid JSON response strictly following this schema:
           ctaText: geminiAd.ctaText,
           ctaUrl: geminiAd.ctaUrl,
           advertiserName: geminiAd.advertiserName,
+          publisherId: geminiAd.publisherId,
+          requestId: geminiAd.requestId,
         };
       }
 
@@ -1018,7 +1027,7 @@ CRITICAL: Return a valid JSON response strictly following this schema:
   // Idlen: inject contextual ad into local fallback response
   const localMsgCount = (history?.length || 0) + 1;
   const { text: localReplyWithAd, ad: localAd } = await maybeAppendAd(simulatedResponse.reply || "", {
-    sessionId: `session-${Date.now()}`,
+    sessionId,
     userMessage: input,
     messageCount: localMsgCount,
   });
@@ -1031,6 +1040,8 @@ CRITICAL: Return a valid JSON response strictly following this schema:
       ctaText: localAd.ctaText,
       ctaUrl: localAd.ctaUrl,
       advertiserName: localAd.advertiserName,
+      publisherId: localAd.publisherId,
+      requestId: localAd.requestId,
     };
   }
 
@@ -1221,7 +1232,7 @@ import {
 } from "./src/lib/quantum";
 import { PrincipalSchema } from "./src/lib/quantum/contracts";
 import { randomUUID } from "crypto";
-import { getIsabellaAd, maybeAppendAd, getIdlenStatus } from "./src/lib/idlen-ads.server";
+import { getIsabellaAd, trackIdlenClick, maybeAppendAd, getIdlenStatus } from "./src/lib/idlen-ads.server";
 
 // ============================================================================
 // ISABELLA QUANTUM MESH — GOVERNED QUANTUM-CLASSICAL EXECUTION PLATFORM
@@ -1453,6 +1464,23 @@ app.get("/api/v1/quantum/blueprint", authenticate, (req, res) => {
       simmetry: "identify -> validate -> authorize -> execute -> measure -> sign -> persist -> replicate -> reconcile",
     },
   });
+});
+
+// ============================================================================
+// IDLEN — Click tracking (server-side) & Health
+// ============================================================================
+
+app.get("/api/health/idlen", (_req, res) => {
+  res.json({ ok: true, ...getIdlenStatus() });
+});
+
+app.post("/api/v1/idlen/click", rateLimit, async (req, res) => {
+  const { adId, publisherId, requestId } = req.body || {};
+  if (!adId || !publisherId || !requestId) {
+    return res.status(400).json({ error: "Missing adId, publisherId, or requestId" });
+  }
+  const result = await trackIdlenClick({ adId, publisherId, requestId });
+  res.json({ ok: result.tracked, error: result.error });
 });
 
 // Vite middleware & Static Serving

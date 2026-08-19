@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { CrownProvider, useCrown } from "./context/CrownContext";
 import { Header } from "./components/Header";
 import { GlobalFooter } from "./components/Footer/GlobalFooter";
@@ -35,6 +35,14 @@ const MainContent: React.FC = () => {
     clearShortcutFeedback,
   } = useCrown();
   const { activeView } = state;
+
+  // Idlen SPA PageView tracking — our app uses state-based navigation,
+  // not History API, so the pixel can't auto-detect route changes.
+  useEffect(() => {
+    if (typeof window !== "undefined" && typeof window.idlen === "function") {
+      try { window.idlen("track", "PageView"); } catch { /* pixel not loaded */ }
+    }
+  }, [activeView]);
 
   return (
     <>
