@@ -148,7 +148,7 @@ export const GlobalFooter: React.FC = () => {
           </span>
           <span
             className={`flex items-center gap-1 transition-colors ${
-              activeModuleId === "CROWN" ? "text-blue-300 font-bold" : "text-blue-400/80"
+              activeModuleId === "CROWN_GATEWAY" ? "text-blue-300 font-bold" : "text-blue-400/80"
             }`}
           >
             <Layers className="w-3 h-3" /> CROWN

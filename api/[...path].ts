@@ -3,6 +3,9 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { app } from "../server";
 import { randomUUID } from "crypto";
 
+// VercelRequest is compatible at runtime with Express Request but not in types
+const appHandler = app as unknown as (req: unknown, res: unknown, next: (err?: unknown) => void) => void;
+
 // ─────────────────────────────────────────────────────────────
 // CONFIGURACIÓN CENTRALIZADA
 // ─────────────────────────────────────────────────────────────
@@ -18,7 +21,6 @@ const CONFIG = {
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
     "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';",
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
   },
 };
@@ -117,37 +119,26 @@ function applyTracingMiddleware(
 // ─────────────────────────────────────────────────────────────
 // MIDDLEWARE: RESILIENCIA (CIRCUIT BREAKER + TIMEOUT)
 // ─────────────────────────────────────────────────────────────
-async function applyResilienceMiddleware(
-  res: VercelResponse,
-  context: { traceId: string; startTime: number }
-): Promise<void> {
-  // 1. Circuit Breaker Check
+function checkCircuitBreaker(context: { traceId: string }): void {
   if (circuitBreakerState.state === "OPEN") {
     const timeSinceLastFailure = Date.now() - circuitBreakerState.lastFailureTime;
-    
     if (timeSinceLastFailure > CONFIG.CIRCUIT_BREAKER_RESET_TIMEOUT_MS) {
       circuitBreakerState.state = "HALF_OPEN";
       logStructured("CIRCUIT_BREAKER_HALF_OPEN", { traceId: context.traceId });
     } else {
-      res.status(503).json({
-        error: {
-          code: "CIRCUIT_BREAKER_OPEN",
-          message: "Service temporarily unavailable. Too many failures.",
-          trace_id: context.traceId,
-          retry_after_ms: CONFIG.CIRCUIT_BREAKER_RESET_TIMEOUT_MS - timeSinceLastFailure,
-          state: "OPEN",
-        },
-      });
-      throw new Error("Circuit breaker open");
+      throw new Error("CIRCUIT_BREAKER_OPEN");
     }
   }
+}
 
-  // 2. Timeout Wrapper (fail fast)
-  await new Promise<void>((_, reject) => {
-    setTimeout(() => {
-      reject(new Error(`Request timeout after ${CONFIG.API_TIMEOUT_SECONDS}s`));
-    }, CONFIG.API_TIMEOUT_SECONDS * 1000);
-  });
+function startTimeoutRace(res: VercelResponse, context: { traceId: string }): NodeJS.Timeout {
+  return setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(504).json({
+        error: { code: "TIMEOUT", message: `Request timeout after ${CONFIG.API_TIMEOUT_SECONDS}s`, trace_id: context.traceId },
+      });
+    }
+  }, CONFIG.API_TIMEOUT_SECONDS * 1000);
 }
 
 function recordSuccess(): void {
@@ -179,7 +170,7 @@ async function handleRequest(
 ): Promise<void> {
   try {
     await new Promise<void>((resolve, reject) => {
-      app(req, res, (err: unknown) => {
+      appHandler(req, res, (err: unknown) => {
         if (err) return reject(err);
         resolve();
       });
@@ -285,17 +276,33 @@ export default async function handler(
     const isPreflight = applyCORSMiddleware(req, res);
     if (isPreflight) return;
 
-    await applyResilienceMiddleware(res, context);
+    // 2. Circuit breaker check (synchronous, throws if OPEN)
+    checkCircuitBreaker(context);
 
-    // 2. Procesamiento asíncrono con circuit breaker
+    // 3. Start timeout race (non-blocking — fires 504 if handler takes too long)
+    const timeoutId = startTimeoutRace(res, context);
+
+    // 4. Procesamiento through Express
     await handleRequest(req, res, context);
 
-    // 3. Post-procesamiento de respuesta
-    await handleResponse(res, context);
+    // 5. Cancel timeout on success
+    clearTimeout(timeoutId);
+
+    // 6. Post-procesamiento de respuesta
+    handleResponse(res, context);
 
   } catch (error: any) {
-    // Si el error es del circuit breaker o timeout, ya se envió respuesta
-    if (error?.message !== "Circuit breaker open" && !res.headersSent) {
+    if (error?.message === "CIRCUIT_BREAKER_OPEN" && !res.headersSent) {
+      const timeSinceLastFailure = Date.now() - circuitBreakerState.lastFailureTime;
+      res.status(503).json({
+        error: {
+          code: "CIRCUIT_BREAKER_OPEN",
+          message: "Service temporarily unavailable. Too many failures.",
+          trace_id: context.traceId,
+          retry_after_ms: CONFIG.CIRCUIT_BREAKER_RESET_TIMEOUT_MS - timeSinceLastFailure,
+        },
+      });
+    } else if (!res.headersSent) {
       await handleError(res, error, context);
     }
   }

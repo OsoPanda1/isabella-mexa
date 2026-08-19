@@ -25,14 +25,14 @@ export const CrownGovernanceCard: React.FC = () => {
         <div className="flex items-center justify-between text-xs font-mono">
           <span className="text-slate-400">Puntaje Integridad:</span>
           <span className="text-emerald-400 font-bold">
-            {(securityGovernance.integrityScore * 100).toFixed(1)}%
+            {(securityGovernance.integrityPercent * 100).toFixed(1)}%
           </span>
         </div>
 
         <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800">
           <div
             className="bg-emerald-400 h-full transition-all duration-500"
-            style={{ width: `${securityGovernance.integrityScore * 100}%` }}
+            style={{ width: `${securityGovernance.integrityPercent * 100}%` }}
           />
         </div>
 

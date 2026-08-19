@@ -420,7 +420,7 @@ export const TraceabilityDashboard: React.FC = () => {
             steps={selectedTrace.steps} 
             activeStepId={activeStepId} 
             onStepClick={(id) => {
-              setActiveStepId(id);
+              setActiveStepId(id as TraceStep["id"]);
               soundManager.playBeep(750, 0.02);
             }} 
           />

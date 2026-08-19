@@ -17,7 +17,7 @@ export const AdaptiveVoiceFeedback: React.FC<AdaptiveVoiceFeedbackProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number>(0);
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {

@@ -91,7 +91,7 @@ export const CattleyaFinanceView: React.FC = () => {
   const hsmKeyIdRef = useRef<number | null>(null);
   const sessionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inactivityTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const userIdRef = useRef(`isabella-${state.activePersona || "cattleya"}`);
+  const userIdRef = useRef(`isabella-${(state as any).activePersona || "cattleya"}`);
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
