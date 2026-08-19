@@ -1,11 +1,57 @@
-# Isabella Villaseñor AI™ v4.2.0
+# Isabella Villaseñor AI™ v5.0.0
 ## Infraestructura Cognitiva Territorial Híbrida y Gobernada
 
 **Isabella Villaseñor AI™** es una propuesta de infraestructura cognitiva territorial orientada a integrar inteligencia artificial, gobernanza computacional, memoria contextual, seguridad, trazabilidad y experiencias multimodales desde una perspectiva latinoamericana.
 
-- **Estado documentado**: 17 de agosto de 2026
+- **Estado documentado**: 19 de agosto de 2026
 - **Clasificación declarada**: Versión candidata a producción, en proceso de validación operativa y documental
 - **Nodo Cero**: Real del Monte, Hidalgo, México
+
+---
+
+## Actualización v5.0.0 — Fusión operacional blindada
+
+La versión v5.0.0 consolida Isabella como núcleo operativo TAMV MD-X4 con 7+ capas federadas y un manifiesto de fusión para repositorios públicos de `github.com/OsoPanda1` relacionados con Isabella. La integración se realiza bajo la regla **NO BORRAR NADA**: los módulos existentes se preservan y se conectan mediante contratos tipados, rutas API y registros auditables.
+
+### Capas afectadas y estado actual
+
+| Capa | Implementación actual | Estado |
+| --- | --- | --- |
+| L0 — Doctrina & Ética | CROWN/ARGUS, EOCT, políticas Zero-Trust y compuertas de riesgo | Implementado / expandido |
+| L1 — Memoria & Registro | BookPI hash-chain, audit kernel, MSR lógico y eventos trazables | Implementado |
+| L2 — Protocolos Controlados | API `/api/v1/protocols` con creación, estado inicial, señales guardian y vínculo XR | Implementado base |
+| L3 — Guardianía & Monitoreo | `guardianSignals`, auditoría, métricas Atlas y eventos BookPI | Implementado base |
+| L4 — XR / DreamSpaces | API `/api/v1/xr/dreamspaces` con escena declarativa, permisos y overlay guardian | Implementado base |
+| L5 — Servicios de Dominio | Auth local, usuarios, perfiles, social feed, streams WebRTC-model, economía interna | Implementado base |
+| L6 — Shell UX & API | Health, manifiesto v5 y rutas HTTP versionadas | Implementado |
+| L7 — Quantum-inspired | Puente PennyLane gobernado y manifiesto de arquitectura QML desacoplada | Implementado / experimental |
+
+### Fusión de repositorios Isabella de OsoPanda1
+
+El manifiesto operativo `src/lib/isabella-v5.ts` registra los repositorios Isabella identificados para ingesta controlada: `base-isabella`, `DOCUMENTACION-TAMV-DM-X4-e-ISABELLA-AI`, `mexican-ai-isabella` y `MI-ISABELLA`. La política aplicada es **read-only hasta revisión de licencia y procedencia**; no se ejecuta código remoto automáticamente.
+
+### Endpoints operativos nuevos o reforzados
+
+| Dominio | Endpoint | Propósito |
+| --- | --- | --- |
+| Arquitectura | `GET /api/v1/isabella/v5/fusion` | Devuelve resumen de capas, repositorios, heads dodecaédricas y plan de ingesta. |
+| Salud | `GET /api/health` | Expone los 12 módulos Isabella y el resumen v5. |
+| Identidad | `POST /api/v1/auth/signup`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout` | Registro/login/logout local con hash PBKDF2 y trazabilidad. |
+| Usuarios | `GET /api/v1/users/me`, `GET /api/v1/profiles/:handle`, `PUT /api/v1/profiles/me` | Perfil avanzado, timeline, galería, links y presencia social. |
+| Social | `POST /api/v1/social/posts`, `GET /api/v1/social/feed` | Posts multimedia, visibilidad y feed público. |
+| XR | `POST /api/v1/xr/dreamspaces` | Crea espacios XR persistentes con overlay guardian y PBR/HDRI declarativo. |
+| Streaming | `POST /api/v1/streams` | Crea salas de streaming/señalización WebRTC-model. |
+| Protocolos | `POST /api/v1/protocols`, `GET /api/v1/protocols` | Inicia protocolos civilizatorios auditables con señales EOCT/BookPI/XR. |
+| Economía | `POST /api/v1/economy/credits` | Registra créditos internos no especulativos en ledger auditable. |
+
+### Controles de blindaje
+
+- Contratos `zod` en payloads HTTP para evitar entradas ambiguas.
+- Autenticación existente reutilizada (`authenticate`, scopes/roles cuando aplica).
+- Passwords locales de prototipo con PBKDF2 + salt; producción debe emitir JWT externo con `ISABELLA_AUTH_SECRET`.
+- Eventos críticos registrados en Atlas audit y BookPI.
+- Economía interna limitada a créditos de uso/contribución; no se implementa trading ni token especulativo.
+- DreamSpaces y protocolos nacen con guardianía explícita y trazabilidad por defecto.
 
 ---
 
@@ -62,7 +108,7 @@ La clasificación *Production-Ready* no debe entenderse como certificación exte
 | Campo | Información |
 | --- | --- |
 | **Nombre** | Isabella Villaseñor AI™ |
-| **Versión documentada** | v4.2.0 |
+| **Versión documentada** | v5.0.0 |
 | **Categoría** | Infraestructura Cognitiva Territorial |
 | **Denominación en inglés** | Territorial Cognitive Infrastructure (TCI) |
 | **Nodo Cero** | Real del Monte, Hidalgo, México |
@@ -70,7 +116,7 @@ La clasificación *Production-Ready* no debe entenderse como certificación exte
 | **Identidad creativa** | Anubis Villaseñor |
 | **ORCID** | [0009-0008-5050-1539](https://orcid.org/0009-0008-5050-1539) |
 | **Ecosistema** | TAMV ONLINE NETWORK · RDM Digital Hub |
-| **Fecha del estado documentado** | 17 de agosto de 2026 |
+| **Fecha del estado documentado** | 19 de agosto de 2026 |
 
 ---
 
@@ -195,7 +241,7 @@ Ingestión → Interpretación → Evaluación de riesgo (ARGUS) → Aplicación
 
 ## Capacidades del sistema
 
-Las siguientes capacidades forman parte del alcance declarado de la versión v4.2.0:
+Las siguientes capacidades forman parte del alcance declarado de la versión v5.0.0:
 - **Interfaz de usuario basada en React**: Interfaz moderna, accesible y responsiva.
 - **Terminal cognitiva interactiva**: Consola CLI con stream de pensamiento y comandos (`/help`, `/status`, `/image`, `/modules`, `/preset`, `/route`, `/argus`, `/voice`, `/sound`, `/presentacion`).
 - **Tráiler de apertura AAA (16s)**: Basado en HTML5 Canvas 60 FPS, Web Audio a 60 Hz y Smooth-Motion.
@@ -214,7 +260,7 @@ Las siguientes capacidades forman parte del alcance declarado de la versión v4.
 
 ## Estado de implementación
 
-- **Versión declarada**: v4.2.0
+- **Versión declarada**: v5.0.0
 - **Madurez declarada**: Prototipo avanzado o versión candidata a producción, en proceso de validación operativa y documental.
 
 | Componente | Estado declarado | Evidencia requerida |
@@ -333,6 +379,29 @@ npm start
 ---
 
 ## API
+
+### API TAMV/Isabella v5
+
+Las rutas v5 se agrupan por dominio para mantener la arquitectura federada:
+
+```text
+GET  /api/v1/isabella/v5/fusion
+POST /api/v1/auth/signup
+POST /api/v1/auth/login
+POST /api/v1/auth/logout
+GET  /api/v1/users/me
+GET  /api/v1/profiles/:handle
+PUT  /api/v1/profiles/me
+POST /api/v1/social/posts
+GET  /api/v1/social/feed
+POST /api/v1/xr/dreamspaces
+POST /api/v1/streams
+POST /api/v1/protocols
+GET  /api/v1/protocols
+POST /api/v1/economy/credits
+```
+
+Todas las acciones mutables están diseñadas para producir evidencia auditada en Atlas/BookPI y para conservar separación entre dominio, política, memoria y experiencia XR.
 
 La API versionada oficial está disponible bajo el prefijo `/api/v1/isabella`:
 

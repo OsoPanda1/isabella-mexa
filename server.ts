@@ -12,6 +12,7 @@ import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
 import { QuantumBridgeRequestSchema, quantumGuard, runQuantumBridge } from "./src/lib/quantum-bridge.server";
 import { summarizeIsabellaV5Fusion } from "./src/lib/isabella-v5";
+import { tamvPlatformRouter } from "./src/lib/tamv-platform.server";
 import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
 import { authenticate, requireRole, requireScope, currentPrincipal } from "./src/lib/auth.server";
 import {
@@ -43,6 +44,7 @@ app.use((req, res, next) => {
   next();
 });
 app.use(atlasRouter);
+app.use(tamvPlatformRouter);
 
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
 function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
