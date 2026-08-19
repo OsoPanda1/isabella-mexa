@@ -4,6 +4,7 @@
  * Registers structured audit events, trace IDs, and cryptographic verification logs.
  */
 
+import { createHash } from "node:crypto";
 import { IsabellaAuditLog } from "../../../contracts/isabella";
 
 // In-memory persistent buffer for high-speed audit tracing & export
@@ -28,15 +29,7 @@ export async function auditTrace(payload: AuditTraceParams): Promise<{
   const auditId = `audit-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   const now = new Date().toISOString();
 
-  // Simple deterministic checksum simulation for tamper-evident logging
-  const payloadStr = JSON.stringify(payload.data || {});
-  let hash = 0;
-  for (let i = 0; i < payloadStr.length; i++) {
-    const char = payloadStr.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash |= 0;
-  }
-  const checksum = `sha256_${Math.abs(hash).toString(16).padStart(8, "0")}`;
+  const checksum = `sha256_${createHash("sha256").update(JSON.stringify(payload.data || {})).digest("hex")}`;
 
   const entry: IsabellaAuditLog = {
     id: auditId,

@@ -61,7 +61,7 @@ export function upsertNode(node: Omit<OntologyNode, "id" | "createdAt" | "update
 }
 
 export function addEdge(from: string, to: string, rel: string, weight = 1.0): OntologyEdge {
-  const e: OntologyEdge = { id: uid(`\${from}\${to}\${rel}`), from, to, rel, weight, createdAt: new Date().toISOString() };
+  const e: OntologyEdge = { id: uid(`${from}${to}${rel}`), from, to, rel, weight, createdAt: new Date().toISOString() };
   edges.push(e);
   return e;
 }

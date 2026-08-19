@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Isabella durable local runtime state
+.isabella-data/

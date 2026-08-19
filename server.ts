@@ -11,6 +11,8 @@ import { ISABELLA_BLUEPRINT } from "./src/data/isabellaBlueprint";
 import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
 import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
+import { authenticate, requireRole, requireScope, currentPrincipal } from "./src/lib/auth.server";
+import { QuantumBridgeRequestSchema, quantumGuard, runQuantumBridge } from "./src/lib/quantum-bridge.server";
 import {
   ISABELLA_PLANS,
   buildCheckoutUrl,
@@ -61,11 +63,8 @@ function rateLimit(req: express.Request, res: express.Response, next: express.Ne
 }
 
 function getBillingIdentity(req: express.Request): { userId: string; plan?: string } {
-  const userId = stableUserId(
-    String(req.headers["x-isabella-user"] || req.body?.actorId || req.body?.userId || req.body?.sessionId || req.query.user || "")
-  );
-  const plan = String(req.headers["x-isabella-plan"] || req.body?.plan || req.query.plan || "");
-  return { userId, plan: plan || undefined };
+  const principal = currentPrincipal(req);
+  return { userId: stableUserId(`${principal.tenantId}:${principal.sub}`), plan: principal.plan };
 }
 
 function quotaGate(capability: MeteredCapability, amountFactory?: (req: express.Request) => number) {
@@ -165,6 +164,28 @@ async function executeGeminiWithCascade(
   throw lastError;
 }
 
+
+// Governed PennyLane quantum ML bridge
+app.get("/api/v1/quantum/pennylane/status", authenticate, requireScope("quantum:execute"), async (req, res) => {
+  try {
+    const input = QuantumBridgeRequestSchema.parse({ task: "diagnose", provider: "default.qubit", repository: "PennyLaneAI/pennylane" });
+    const result = await runQuantumBridge(input, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/v1/quantum/pennylane/execute", rateLimit, authenticate, requireScope("quantum:execute"), quantumGuard, async (req, res) => {
+  try {
+    const { input } = (req as any).quantumBridge;
+    const result = await runQuantumBridge(input, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 // Health and System Diagnostic API
 app.get("/api/health", (req, res) => {
   res.json({
@@ -179,7 +200,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.get("/api/v1/billing/plans", (req, res) => {
+app.get("/api/v1/billing/plans", authenticate, (req, res) => {
   const { userId, plan } = getBillingIdentity(req);
   const current = evaluateUsage(userId, "chat", 1, plan);
   res.json({
@@ -191,13 +212,13 @@ app.get("/api/v1/billing/plans", (req, res) => {
   });
 });
 
-app.get("/api/v1/billing/usage", (req, res) => {
+app.get("/api/v1/billing/usage", authenticate, (req, res) => {
   const { userId, plan } = getBillingIdentity(req);
   const decision = evaluateUsage(userId, "chat", 1, plan);
   res.json({ ok: true, userId, plan: decision.plan, usage: decision.usage, remaining: decision.remaining, resetAt: decision.resetAt });
 });
 
-app.post("/api/v1/billing/checkout", rateLimit, (req, res) => {
+app.post("/api/v1/billing/checkout", rateLimit, authenticate, requireScope("billing:checkout"), (req, res) => {
   const { userId } = getBillingIdentity(req);
   const requestedPlan = (req.body?.planId || req.body?.plan || "plus") as IsabellaPlanId;
   if (requestedPlan === "free" || requestedPlan === "custom") {
@@ -206,17 +227,14 @@ app.post("/api/v1/billing/checkout", rateLimit, (req, res) => {
   res.json({ ok: true, checkoutUrl: buildCheckoutUrl(requestedPlan, userId), planId: requestedPlan });
 });
 
-app.get("/api/v1/billing/checkout/mock", (req, res) => {
+app.get("/api/v1/billing/checkout/mock", authenticate, requireRole("admin"), (req, res) => {
+  if (process.env.NODE_ENV === "production" || process.env.ENABLE_MOCK_CHECKOUT !== "true") {
+    return res.status(404).json({ ok: false, error: "Mock checkout is disabled outside explicit development mode." });
+  }
   const plan = String(req.query.plan || "plus") as IsabellaPlanId;
-  const user = String(req.query.user || "anonymous");
-  const applied = setUserPlan(user, plan);
-  res.json({
-    ok: true,
-    mode: "mock-checkout",
-    message: "Checkout simulado para desarrollo/Vercel preview. Sustituir por Stripe Checkout en producción.",
-    user,
-    plan: applied,
-  });
+  const { userId } = getBillingIdentity(req);
+  const applied = setUserPlan(userId, plan);
+  res.json({ ok: true, mode: "mock-checkout-dev-only", user: userId, plan: applied });
 });
 
 // ============================================================================
@@ -251,14 +269,14 @@ app.get("/api/v1/isabella", (req, res) => {
 });
 
 // 2. POST /api/v1/isabella - Perception Processor (Next.js / Hub standard route)
-app.post("/api/v1/isabella", rateLimit, quotaGate("chat"), async (req, res) => {
+app.post("/api/v1/isabella", rateLimit, authenticate, quotaGate("chat"), async (req, res) => {
   try {
     const body = req.body || {};
     
     // Normalization & Validation of Perception
     const perception: IsabellaPerception = {
       sessionId: body.sessionId || `sess-${Date.now()}`,
-      actorId: body.actorId || "usr-anon",
+      actorId: currentPrincipal(req).sub,
       territoryId: body.territoryId || "rdm-nodo-cero",
       inputType: ["chat", "event", "signal", "api", "ui"].includes(body.inputType) 
         ? body.inputType 
@@ -300,7 +318,7 @@ app.get("/api/v1/isabella/audit", (req, res) => {
 });
 
 // 4. GET /api/v1/isabella/memory - Hierarchical Memory Query
-app.get("/api/v1/isabella/memory", (req, res) => {
+app.get("/api/v1/isabella/memory", authenticate, requireScope("memory:read"), (req, res) => {
   const scope = req.query.scope as any;
   const query = req.query.q as string;
   const minRelevance = req.query.minRelevance ? parseFloat(req.query.minRelevance as string) : undefined;
@@ -315,7 +333,7 @@ app.get("/api/v1/isabella/memory", (req, res) => {
 });
 
 // 5. POST /api/v1/isabella/memory - Register Memory Item
-app.post("/api/v1/isabella/memory", async (req, res) => {
+app.post("/api/v1/isabella/memory", authenticate, requireScope("memory:write"), async (req, res) => {
   try {
     const { content, scope = "immediate", sourceType = "user", relevance = 0.8, contentJson } = req.body;
     if (!content || typeof content !== "string") {
@@ -323,7 +341,7 @@ app.post("/api/v1/isabella/memory", async (req, res) => {
     }
 
     const item = await addMemoryItem({
-      tenantId: "nodo-cero-rdm",
+      tenantId: currentPrincipal(req).tenantId,
       scope,
       content,
       contentJson,
@@ -352,7 +370,7 @@ app.get("/api/v1/isabella/tools", (req, res) => {
 });
 
 // 7. POST /api/v1/isabella/tools/execute - Tool Execution Sandbox
-app.post("/api/v1/isabella/tools/execute", rateLimit, quotaGate("tool"), async (req, res) => {
+app.post("/api/v1/isabella/tools/execute", rateLimit, authenticate, requireScope("tools:execute"), quotaGate("tool"), async (req, res) => {
   try {
     const { toolName, arguments: args = {} } = req.body;
     if (!toolName) {
@@ -440,7 +458,7 @@ interface AgentSessionRecord {
 const activeAgentSessions = new Map<string, AgentSessionRecord>();
 
 // 11. POST /api/v1/isabella/agent/lease - Lease an autonomous Isabella Agent
-app.post("/api/v1/isabella/agent/lease", rateLimit, quotaGate("agent"), (req, res) => {
+app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("agent:lease"), quotaGate("agent"), (req, res) => {
   const body = req.body || {};
   const sessionId = `isabella-agent-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
   const durationMinutes = body.leaseDurationMinutes || 60;
@@ -453,7 +471,7 @@ app.post("/api/v1/isabella/agent/lease", rateLimit, quotaGate("agent"), (req, re
     createdAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
     systemInstructions: body.systemInstructions || "Eres Isabella Villaseñor AI, infraestructura cognitiva territorial gobernada.",
-    capabilities: body.capabilities || {
+    capabilities: {
       allowRunCommand: false,
       allowFileEdit: false,
       allowImageGen: true,
@@ -483,36 +501,30 @@ app.post("/api/v1/isabella/agent/lease", rateLimit, quotaGate("agent"), (req, re
       litleGatesStatus: pqcProof.litleGatesStatus,
       sharedSecretHash: kemCipher.sharedSecretHash.slice(0, 32) + "...",
       mlDsaSignature: pqcProof.mlDsaSignature.slice(0, 48) + "...",
-      pqcCompliant: true,
+      pqcCompliant: false,
+      implementationStatus: "PROTOTYPE_NOT_PRODUCTION",
     },
   });
 });
 
 // 12. POST /api/v1/isabella/agent/chat - Programmatic Agent Chat Execution with Thought & Tool Interception
-app.post("/api/v1/isabella/agent/chat", rateLimit, quotaGate("chat"), async (req, res) => {
+app.post("/api/v1/isabella/agent/chat", rateLimit, authenticate, requireScope("agent:chat"), quotaGate("chat"), async (req, res) => {
   try {
     const { sessionId, prompt, contextPayload } = req.body || {};
     let session = sessionId ? activeAgentSessions.get(sessionId) : null;
 
     if (!session) {
-      const autoId = `isabella-agent-auto-${Date.now()}`;
-      session = {
-        sessionId: autoId,
-        status: "active",
-        createdAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        systemInstructions: "Eres Isabella Villaseñor AI, infraestructura cognitiva territorial gobernada.",
-        capabilities: { allowRunCommand: false, allowFileEdit: false, allowImageGen: true, allowVoiceSynthesis: true, allowNetworkFetch: true, securityLevel: "zero_trust_strict" },
-        preset: "prime",
-        model: "gemini-3.7-flash",
-        history: [],
-      };
-      activeAgentSessions.set(autoId, session);
+      return res.status(404).json({ ok: false, error: "Agent session not found. Lease a session before chat execution." });
+    }
+
+    if (session.status !== "active" || Date.parse(session.expiresAt) <= Date.now()) {
+      if (session.status === "active") session.status = "expired";
+      return res.status(410).json({ ok: false, error: "Agent session expired or inactive." });
     }
 
     const perception: IsabellaPerception = {
       sessionId: session.sessionId,
-      actorId: "agent-caller",
+      actorId: currentPrincipal(req).sub,
       territoryId: "rdm-nodo-cero",
       inputType: "chat",
       payload: { text: prompt || "Hola Isabella", ...contextPayload },
@@ -572,7 +584,7 @@ app.post("/api/v1/isabella/agent/chat", rateLimit, quotaGate("chat"), async (req
 });
 
 // 13. GET /api/v1/isabella/agent/stream - SSE Real-time Streaming for Tokens, Thoughts & Tools
-app.get("/api/v1/isabella/agent/stream", async (req, res) => {
+app.get("/api/v1/isabella/agent/stream", authenticate, requireScope("agent:chat"), async (req, res) => {
   const prompt = (req.query.prompt as string) || "Hola Isabella";
 
   res.setHeader("Content-Type", "text/event-stream");
@@ -598,7 +610,8 @@ app.get("/api/v1/isabella/agent/stream", async (req, res) => {
     mlDsaSignature: streamPqcProof.mlDsaSignature.slice(0, 48) + "...",
     slhDsaSignature: streamPqcProof.slhDsaSignature.slice(0, 48) + "...",
     litleGatesStatus: streamPqcProof.litleGatesStatus,
-    pqcCompliant: true,
+    pqcCompliant: false,
+    implementationStatus: "PROTOTYPE_NOT_PRODUCTION",
   });
   await new Promise((r) => setTimeout(r, 100));
 
@@ -639,7 +652,7 @@ function buildGenerativeArtworkUrl(prompt: string, style = "cyber_ethereal", asp
 }
 
 // Image Generation API: Gemini Image Generation with Generative Flux Engine
-app.post("/api/isabella/generate-image", rateLimit, quotaGate("image"), async (req, res) => {
+app.post("/api/isabella/generate-image", rateLimit, authenticate, quotaGate("image"), async (req, res) => {
   const startTime = Date.now();
   const { prompt, style = "cyber_ethereal", aspectRatio = "1:1" } = req.body;
 
@@ -751,7 +764,7 @@ app.post("/api/isabella/generate-image", rateLimit, quotaGate("image"), async (r
 });
 
 // Text-to-Speech API
-app.post("/api/isabella/tts", rateLimit, quotaGate("voice", (req) => Math.ceil(String(req.body?.text || "").length / 14)), async (req, res) => {
+app.post("/api/isabella/tts", rateLimit, authenticate, quotaGate("voice", (req) => Math.ceil(String(req.body?.text || "").length / 14)), async (req, res) => {
   const startTime = Date.now();
   const { text, pitch = 1.05, rate = 1.0, timbre = "calida" } = req.body;
 
@@ -813,7 +826,7 @@ app.post("/api/isabella/tts", rateLimit, quotaGate("voice", (req) => Math.ceil(S
 });
 
 // Cognitive Processing API: CROWN routing + Multi-module cognitive synthesis
-app.post("/api/isabella/process", rateLimit, quotaGate("chat"), async (req, res) => {
+app.post("/api/isabella/process", rateLimit, authenticate, quotaGate("chat"), async (req, res) => {
   const startTime = Date.now();
   const {
     input,

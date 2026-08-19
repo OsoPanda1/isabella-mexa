@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { authenticate, requireRole, requireScope, currentPrincipal } from "./auth.server";
 import { metrics, readAudit } from "./atlas-kernel.server";
 import { evaluatePolicy, anubisStats } from "./anubis.server";
 import { readLedger, ledgerStats, verifyLedger } from "./bookpi.server";
@@ -31,7 +32,7 @@ atlasRouter.get("/api/atlas/getFederationGraph", async (req, res) => {
   res.json(getGraph(200));
 });
 
-atlasRouter.post("/api/atlas/emitEoctEvent", async (req, res) => {
+atlasRouter.post("/api/atlas/emitEoctEvent", authenticate, requireScope("events:write"), async (req, res) => {
   try {
     const data = EventSchemas[req.body.type as keyof typeof EventSchemas]?.parse(req.body);
     if (!data) throw new Error("Invalid event type");
@@ -42,15 +43,15 @@ atlasRouter.post("/api/atlas/emitEoctEvent", async (req, res) => {
   }
 });
 
-atlasRouter.post("/api/atlas/getLedger", (req, res) => {
+atlasRouter.post("/api/atlas/getLedger", authenticate, requireScope("ledger:read"), (req, res) => {
   res.json(readLedger(50));
 });
 
-atlasRouter.post("/api/atlas/evalAnubisPolicy", (req, res) => {
+atlasRouter.post("/api/atlas/evalAnubisPolicy", authenticate, requireScope("policy:evaluate"), (req, res) => {
   res.json(evaluatePolicy(req.body));
 });
 
-atlasRouter.post("/api/atlas/isabellaAsk", async (req, res) => {
+atlasRouter.post("/api/atlas/isabellaAsk", authenticate, requireScope("memory:read"), async (req, res) => {
   try {
     res.json(searchEpisodes(req.body.query, 3));
   } catch (err: any) {
@@ -58,15 +59,15 @@ atlasRouter.post("/api/atlas/isabellaAsk", async (req, res) => {
   }
 });
 
-atlasRouter.post("/api/atlas/isabellaRecommend", async (req, res) => {
+atlasRouter.post("/api/atlas/isabellaRecommend", authenticate, requireScope("memory:read"), async (req, res) => {
   try {
-    res.json(getRecommendations(req.body.userId, req.body.context));
+    res.json(getRecommendations(currentPrincipal(req).sub, req.body.context));
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-atlasRouter.post("/api/atlas/isabellaModerate", async (req, res) => {
+atlasRouter.post("/api/atlas/isabellaModerate", authenticate, requireScope("policy:evaluate"), async (req, res) => {
   try {
     res.json(moderateContent(req.body.content, req.body.context));
   } catch (err: any) {
@@ -74,7 +75,7 @@ atlasRouter.post("/api/atlas/isabellaModerate", async (req, res) => {
   }
 });
 
-atlasRouter.post("/api/atlas/setEmotional", (req, res) => {
+atlasRouter.post("/api/atlas/setEmotional", authenticate, requireRole("operator"), (req, res) => {
   res.json(updateEmotionalState(req.body));
 });
 
@@ -82,9 +83,9 @@ atlasRouter.get("/api/atlas/getEconomySnapshot", (req, res) => {
   res.json({ products: listProducts(), orders: listOrders(), stats: economyStats() });
 });
 
-atlasRouter.post("/api/atlas/purchaseProduct", async (req, res) => {
+atlasRouter.post("/api/atlas/purchaseProduct", authenticate, requireScope("economy:purchase"), async (req, res) => {
   try {
-    const order = createOrder(req.body.userId, req.body.productId);
+    const order = createOrder(currentPrincipal(req).sub, req.body.productId);
     payOrder(order.id);
     res.json(order);
   } catch (e: any) {
@@ -92,24 +93,24 @@ atlasRouter.post("/api/atlas/purchaseProduct", async (req, res) => {
   }
 });
 
-atlasRouter.post("/api/atlas/mintUserCredits", (req, res) => {
-  res.json(mintCredits(req.body.userId, req.body.amount));
+atlasRouter.post("/api/atlas/mintUserCredits", authenticate, requireRole("admin"), (req, res) => {
+  res.json(mintCredits(currentPrincipal(req).sub, req.body.amount));
 });
 
 atlasRouter.get("/api/atlas/getDaoSnapshot", (req, res) => {
   res.json({ namespaces: listNamespaces(), proposals: listProposals(), stats: daoStats() });
 });
 
-atlasRouter.post("/api/atlas/daoVote", (req, res) => {
-  res.json(castVote(req.body.proposalId, req.body.voterId, req.body.choice));
+atlasRouter.post("/api/atlas/daoVote", authenticate, requireScope("dao:vote"), (req, res) => {
+  res.json(castVote(req.body.proposalId, currentPrincipal(req).sub, req.body.choice));
 });
 
-atlasRouter.post("/api/atlas/daoCreateProposal", (req, res) => {
-  res.json(createProposal(req.body.authorId, req.body.namespaceId, req.body.title, req.body.body));
+atlasRouter.post("/api/atlas/daoCreateProposal", authenticate, requireScope("dao:write"), (req, res) => {
+  res.json(createProposal(currentPrincipal(req).sub, req.body.namespaceId, req.body.title, req.body.body));
 });
 
 // Registry
-atlasRouter.post("/api/registry/rpcCreateDocument", async (req, res) => {
+atlasRouter.post("/api/registry/rpcCreateDocument", authenticate, requireScope("registry:write"), async (req, res) => {
   try {
     res.json(await createDocument(req.body));
   } catch (e: any) {
@@ -117,7 +118,7 @@ atlasRouter.post("/api/registry/rpcCreateDocument", async (req, res) => {
   }
 });
 
-atlasRouter.post("/api/registry/rpcTransitionState", async (req, res) => {
+atlasRouter.post("/api/registry/rpcTransitionState", authenticate, requireRole("operator"), async (req, res) => {
   try {
     res.json(await transitionState(req.body));
   } catch (e: any) {
@@ -134,7 +135,7 @@ atlasRouter.get("/api/telemetry/getTelemetrySnapshot", (req, res) => {
   res.json({ metrics: metrics.snapshot() });
 });
 
-atlasRouter.post("/api/telemetry/fireSyntheticEvent", (req, res) => {
+atlasRouter.post("/api/telemetry/fireSyntheticEvent", authenticate, requireRole("operator"), (req, res) => {
   metrics.counter("synthetic_events_total").inc({ origin: req.body.origin || "api" });
   res.json({ success: true });
 });

@@ -5,6 +5,7 @@
  */
 import { createHash } from "node:crypto";
 import { signLedgerBlockPQC } from "./postQuantumCrypto";
+import { loadJsonArray, saveJsonArray } from "./durable-json.server";
 
 export type BookPIEventType =
   | "http_request" | "http_response"
@@ -37,8 +38,8 @@ export interface BookPIBlock {
 
 const DIFFICULTY = 2;
 const LEDGER_MAX = 5_000;
-const ledger: BookPIBlock[] = [];
-let _prevHash = "0".repeat(64);
+const ledger: BookPIBlock[] = loadJsonArray<BookPIBlock>("bookpi-ledger");
+let _prevHash = ledger.at(-1)?.hash || "0".repeat(64);
 
 function mine(base: string): { nonce: number; hash: string } {
   let nonce = 0;
@@ -97,6 +98,7 @@ export function appendBlock(input: {
   _prevHash = hash;
   ledger.push(block);
   if (ledger.length > LEDGER_MAX) ledger.splice(0, ledger.length - LEDGER_MAX);
+  saveJsonArray("bookpi-ledger", ledger);
   return block;
 }
 
@@ -115,7 +117,7 @@ export function verifyLedger(): { ok: boolean; brokenAt?: number; total: number;
     if (recomputed !== b.hash) return { ok: false, brokenAt: i, total: ledger.length, pqcVerified: false };
     prev = b.hash;
   }
-  return { ok: true, total: ledger.length, pqcVerified: true };
+  return { ok: true, total: ledger.length, pqcVerified: false };
 }
 
 export function ledgerStats() {
@@ -125,4 +127,6 @@ export function ledgerStats() {
 }
 
 // Bootstrap Initial Block
-appendBlock({ eventType: "kernel_boot", module: "BookPI", action: "ledger.init", actor: "system", data: { version: "4.2.0-PQC", difficulty: DIFFICULTY } });
+if (ledger.length === 0) {
+  appendBlock({ eventType: "kernel_boot", module: "BookPI", action: "ledger.init", actor: "system", data: { version: "4.2.0-PQC", difficulty: DIFFICULTY, persistence: "durable-json" } });
+}

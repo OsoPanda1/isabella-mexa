@@ -1,7 +1,8 @@
 /**
- * Isabella Villaseñor AI™ — Suite Criptográfica Poscuántica (CRYSTALS-LATAMV)
- * 
- * Implementa la infraestructura de seguridad poscuántica de 4 pilares:
+ * Isabella Villaseñor AI™ — Adaptador criptográfico poscuántico experimental (CRYSTALS-LATAMV)
+ *
+ * Clasificación: PROTOTYPE. Este módulo mantiene contratos de atestación para integración con librerías PQC auditadas;
+ * no debe presentarse como criptografía PQC productiva ni certificada. Modela 4 pilares:
  * 1. ML-KEM-768 (Kyber): Encapsulamiento de claves poscuánticas para túneles mTLS y sesiones.
  * 2. ML-DSA-87 (Dilithium): Firmas digitales basadas en redes reticulares (lattice-based).
  * 3. SLH-DSA-128s (SPHINCS+): Firmas poscuánticas basadas en árboles de desbordamiento de hash.
@@ -38,7 +39,7 @@ export interface LitleGateEvaluation {
   fidelity: number; // 0.999..
 }
 
-// Pseudo-Random Deterministic Helper for Key & Signature Generation
+// PROTOTYPE deterministic helper for non-production attestation metadata.
 function generateHexHash(seed: string, length: number = 64): string {
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -93,7 +94,7 @@ export function signMLDSA87(payload: string, secretKey: string = "default_sk"): 
     signatureHex,
     algorithm: "ML-DSA-87",
     signedDigest: digest,
-    verified: true,
+    verified: false,
     litleGatesPassed: 32,
     timestamp: new Date().toISOString(),
   };
@@ -109,7 +110,7 @@ export function signSLHDSA128s(payload: string): PQCSignatureResult {
     signatureHex,
     algorithm: "SLH-DSA-128s",
     signedDigest: digest,
-    verified: true,
+    verified: false,
     litleGatesPassed: 32,
     timestamp: new Date().toISOString(),
   };
@@ -155,9 +156,10 @@ export function signLedgerBlockPQC(blockId: string, dataHash: string) {
     dataHash,
     mlDsaSignature: mlDsa.signatureHex,
     slhDsaSignature: slhDsa.signatureHex,
-    litleGatesStatus: "32/32_VERIFIED",
+    litleGatesStatus: "32/32_ATTESTED_PROTOTYPE",
     evaluationsCount: gates.length,
-    pqcCompliant: true,
+    pqcCompliant: false,
+    implementationStatus: "PROTOTYPE_NOT_PRODUCTION",
     timestamp: new Date().toISOString(),
   };
 }

@@ -58,7 +58,7 @@ function ulid(): string {
 }
 
 function generateDocumentUid(federation_id: string, namespace: string, hash: string): string {
-  return `ATLAS-DOC-\${federation_id}-\${namespace.toUpperCase()}-\${ulid()}-\${hash.slice(0, 8)}`;
+  return `ATLAS-DOC-${federation_id}-${namespace.toUpperCase()}-${ulid()}-${hash.slice(0, 8)}`;
 }
 
 function canonicalize(input: {
@@ -99,7 +99,7 @@ export async function createDocument(input: CreateDocumentInput): Promise<{
     actor: input.actor,
     required_scope: undefined,
   });
-  if (!policy.allow) throw new Error(`policy_denied: \${policy.reason}`);
+  if (!policy.allow) throw new Error(`policy_denied: ${policy.reason}`);
 
   // Pipeline A — canonical state
   const canonical = canonicalize(input);
@@ -107,7 +107,7 @@ export async function createDocument(input: CreateDocumentInput): Promise<{
   const documentUid = generateDocumentUid(input.federation_id, input.namespace, hash);
 
   // Pipeline B — sign + event + anchor
-  const signature = `hmac:\${canonicalHash({ hash, federation: input.federation_id })}`;
+  const signature = `hmac:${canonicalHash({ hash, federation: input.federation_id })}`;
 
   const record: DocumentRecord = {
     document_uid: documentUid,
@@ -188,7 +188,7 @@ export async function transitionState(input: {
       federation_id: doc.federation_id,
     },
   });
-  if (!policy.allow) throw new Error(`policy_denied: \${policy.reason}`);
+  if (!policy.allow) throw new Error(`policy_denied: ${policy.reason}`);
 
   const old_state = doc.state;
   doc.state = input.new_state;
