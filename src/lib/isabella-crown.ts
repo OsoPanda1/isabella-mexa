@@ -1,15 +1,15 @@
 /**
- * Isabella Villaseñor AI v4.2.0 — Canonical specification data (client-safe).
+ * Isabella Villaseñor AI v5.0.0 — Canonical specification data (client-safe).
  * Author: Edwin Oswaldo Castillo Trejo (Anubis Villaseñor) · ORCID 0009-0008-5050-1539
  * Ecosystem: TAMV ONLINE NETWORK / RDM Digital Hub / Nodo Cero (Real del Monte, Hidalgo)
  * License: CC BY 4.0
  */
 
-export const ISABELLA_VERSION = "4.2.0";
+export const ISABELLA_VERSION = "5.0.0";
 export const ISABELLA_NODE_ZERO = "Real del Monte, Hidalgo, México";
 export const ISABELLA_ORCID = "0009-0008-5050-1539";
 
-export type NodeId = "crown" | "isa" | "sophia" | "orion" | "argus";
+export type NodeId = "crown" | "isa" | "sophia" | "orion" | "argus" | "mnemosyne" | "tellus" | "chronos" | "hermes" | "axioma" | "praxis" | "harmonia";
 export type PresetId = "prime" | "empathic" | "strategic" | "sentinel" | "executor" | "synergistic";
 export type PolicyStatus = "allowed" | "requires_approval" | "denied";
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -60,9 +60,51 @@ export const NODES: NodeSpec[] = [
     activation: 0.99, latencyMs: 8, confidence: 0.999, throughput: "3.2k tps",
     weight: 0.98, sensitivity: 0.95, depthLimit: 12,
   },
+  {
+    id: "mnemosyne", name: "MNEMOSYNE", role: "Memoria Pentacapa y Consolidación",
+    pillars: ["Vector LRU Cache", "Qdrant Embeddings", "Consolidación Histórica", "Recuperación Contextual"],
+    activation: 0.92, latencyMs: 18, confidence: 0.986, throughput: "2.4k tps",
+    weight: 0.86, sensitivity: 0.84, depthLimit: 10,
+  },
+  {
+    id: "tellus", name: "TELLUS", role: "Ingesta Sensorial y Ledger Territorial",
+    pillars: ["Sensor Ingestion", "GEMET", "CITEMESH", "BookPI Territorial"],
+    activation: 0.88, latencyMs: 22, confidence: 0.975, throughput: "1.7k tps",
+    weight: 0.8, sensitivity: 0.82, depthLimit: 8,
+  },
+  {
+    id: "chronos", name: "CHRONOS", role: "Sincronía Temporal y Firma PQC",
+    pillars: ["PQC Timestamping", "Latency Sync Audit", "Dilithium-5", "Secuenciación de Eventos"],
+    activation: 0.9, latencyMs: 10, confidence: 0.99, throughput: "2.6k tps",
+    weight: 0.84, sensitivity: 0.9, depthLimit: 9,
+  },
+  {
+    id: "hermes", name: "HERMES", role: "Router CITEMESH y Failover",
+    pillars: ["Mesh Routing", "Air-Gapped Sync", "Gateway Híbrido", "Failover Audit"],
+    activation: 0.87, latencyMs: 16, confidence: 0.979, throughput: "2.2k tps",
+    weight: 0.78, sensitivity: 0.78, depthLimit: 8,
+  },
+  {
+    id: "axioma", name: "AXIOMA", role: "Reglas Formales y Teoremas Operativos",
+    pillars: ["Rule Engine", "Formal Proof", "Restricciones Éticas", "Verificación de Invariantes"],
+    activation: 0.93, latencyMs: 24, confidence: 0.993, throughput: "1.2k tps",
+    weight: 0.87, sensitivity: 0.92, depthLimit: 11,
+  },
+  {
+    id: "praxis", name: "PRAXIS", role: "Ejecución WASM y Auditoría Sandbox",
+    pillars: ["WASM Launcher", "Contained Audit", "MicroVM Boundary", "Tool Invocation"],
+    activation: 0.86, latencyMs: 20, confidence: 0.982, throughput: "1.9k tps",
+    weight: 0.77, sensitivity: 0.88, depthLimit: 9,
+  },
+  {
+    id: "harmonia", name: "HARMONIA", role: "Consenso Nodal y Balance YUN",
+    pillars: ["Fast Nodal Consensus", "YUN Balance", "Cultural Media Alignment", "Federated Equilibrium"],
+    activation: 0.89, latencyMs: 26, confidence: 0.981, throughput: "1.5k tps",
+    weight: 0.81, sensitivity: 0.86, depthLimit: 8,
+  },
 ];
 
-export type NodeWeights = Record<NodeId, number>;
+export type NodeWeights = Partial<Record<NodeId, number>>;
 
 export const PRESETS: Record<PresetId, { label: string; description: string; weights: NodeWeights }> = {
   prime: { label: "Prime", description: "Perfil balanceado de operación soberana.", weights: { crown: 0.95, isa: 0.9, sophia: 0.85, orion: 0.75, argus: 0.95 } },
