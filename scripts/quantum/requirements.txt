@@ -1,0 +1,4 @@
+pennylane>=0.43,<0.47
+pennylane-lightning>=0.43,<0.47
+# Optional provider plugin for IBM/Qiskit workflows. Install only in workers that need it:
+# pennylane-qiskit>=0.43,<0.47

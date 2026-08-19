@@ -163,6 +163,28 @@ async function executeGeminiWithCascade(
   throw lastError;
 }
 
+
+// Governed PennyLane quantum ML bridge
+app.get("/api/v1/quantum/pennylane/status", authenticate, requireScope("quantum:execute"), async (req, res) => {
+  try {
+    const input = QuantumBridgeRequestSchema.parse({ task: "diagnose", provider: "default.qubit", repository: "PennyLaneAI/pennylane" });
+    const result = await runQuantumBridge(input, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+app.post("/api/v1/quantum/pennylane/execute", rateLimit, authenticate, requireScope("quantum:execute"), quantumGuard, async (req, res) => {
+  try {
+    const { input } = (req as any).quantumBridge;
+    const result = await runQuantumBridge(input, req);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
 // Health and System Diagnostic API
 app.get("/api/health", (req, res) => {
   res.json({
