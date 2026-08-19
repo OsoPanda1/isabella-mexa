@@ -116,7 +116,7 @@ type LabelSet = Record<string, string | number>;
 const labelKey = (l: LabelSet) =>
   Object.keys(l)
     .sort()
-    .map((k) => `\${k}=\${l[k]}`)
+    .map((k) => `${k}=${l[k]}`)
     .join(",");
 
 class Counter {
@@ -207,26 +207,26 @@ class Registry {
   prometheus(): string {
     const lines: string[] = [];
     for (const c of this.counters.values()) {
-      lines.push(`# HELP \${c.name} \${c.help}`);
-      lines.push(`# TYPE \${c.name} counter`);
+      lines.push(`# HELP ${c.name} ${c.help}`);
+      lines.push(`# TYPE ${c.name} counter`);
       for (const s of c.snapshot())
-        lines.push(`\${c.name}{\${s.labels}} \${s.value}`);
+        lines.push(`${c.name}{${s.labels}} ${s.value}`);
     }
     for (const g of this.gauges.values()) {
-      lines.push(`# HELP \${g.name} \${g.help}`);
-      lines.push(`# TYPE \${g.name} gauge`);
+      lines.push(`# HELP ${g.name} ${g.help}`);
+      lines.push(`# TYPE ${g.name} gauge`);
       for (const s of g.snapshot())
-        lines.push(`\${g.name}{\${s.labels}} \${s.value}`);
+        lines.push(`${g.name}{${s.labels}} ${s.value}`);
     }
     for (const h of this.histograms.values()) {
-      lines.push(`# HELP \${h.name} \${h.help}`);
-      lines.push(`# TYPE \${h.name} histogram`);
+      lines.push(`# HELP ${h.name} ${h.help}`);
+      lines.push(`# TYPE ${h.name} histogram`);
       for (const s of h.snapshot()) {
         for (const b of s.buckets)
-          lines.push(`\${h.name}_bucket{\${s.labels},le="\${b.le}"} \${b.count}`);
-        lines.push(`\${h.name}_bucket{\${s.labels},le="+Inf"} \${s.count}`);
-        lines.push(`\${h.name}_sum{\${s.labels}} \${s.sum}`);
-        lines.push(`\${h.name}_count{\${s.labels}} \${s.count}`);
+          lines.push(`${h.name}_bucket{${s.labels},le="${b.le}"} ${b.count}`);
+        lines.push(`${h.name}_bucket{${s.labels},le="+Inf"} ${s.count}`);
+        lines.push(`${h.name}_sum{${s.labels}} ${s.sum}`);
+        lines.push(`${h.name}_count{${s.labels}} ${s.count}`);
       }
     }
     return lines.join("\\n") + "\\n";
@@ -287,7 +287,7 @@ export function recentSpans(limit = 50): Span[] {
 export function recordAiEvaluation(input: { precision: number; hallucination: number; latencyMs: number; model: string }) {
   metrics.gauge("atlas_ai_precision").set(input.precision, { model: input.model });
   metrics.gauge("atlas_ai_hallucination_rate").set(input.hallucination, { model: input.model });
-  metrics.histogram("atlas_request_duration_seconds").observe(input.latencyMs / 1000, { op: `ai:\${input.model}` });
+  metrics.histogram("atlas_request_duration_seconds").observe(input.latencyMs / 1000, { op: `ai:${input.model}` });
 }
 
 // ---------- Bootstrap canonical state ----------

@@ -4,6 +4,7 @@
  * Scopes: immediate | session | project | territorial | historical
  */
 
+import { createHash } from "node:crypto";
 import { IsabellaMemoryItem, IsabellaMemoryScope } from "../../../contracts/isabella";
 
 // In-memory persistent cache for hierarchical items
@@ -44,14 +45,7 @@ export async function addMemoryItem(item: Omit<IsabellaMemoryItem, "memoryId" | 
   const memoryId = `mem-${item.scope}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
   const now = new Date().toISOString();
 
-  // Compute checksum
-  const str = item.content + (item.scope || "");
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  const checksum = `sha256_${Math.abs(hash).toString(16).padStart(8, "0")}`;
+  const checksum = `sha256_${createHash("sha256").update(item.content + (item.scope || "")).digest("hex")}`;
 
   const newItem: IsabellaMemoryItem = {
     ...item,

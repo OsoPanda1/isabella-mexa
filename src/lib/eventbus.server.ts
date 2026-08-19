@@ -15,6 +15,7 @@
 import { createHash, createHmac, randomBytes } from "node:crypto";
 import { EventSchemas, type AtlasEvent, type AtlasEventType } from "./events-catalog";
 import { recordAudit, metrics } from "./atlas-kernel.server";
+import { loadJsonArray, saveJsonArray } from "./durable-json.server";
 
 type Handler = (evt: AtlasEvent) => void | Promise<void>;
 
@@ -47,9 +48,9 @@ interface DlqRow {
 const SIGNING_KEY =
   process.env.ATLAS_EVENT_SIGNING_KEY ?? "atlas-dev-event-signing-key";
 
-const outbox: OutboxRow[] = [];
-const processed: ProcessedRow[] = [];
-const dlq: DlqRow[] = [];
+const outbox: OutboxRow[] = loadJsonArray<OutboxRow>("eventbus-outbox");
+const processed: ProcessedRow[] = loadJsonArray<ProcessedRow>("eventbus-processed");
+const dlq: DlqRow[] = loadJsonArray<DlqRow>("eventbus-dlq");
 const handlers = new Map<AtlasEventType, Handler[]>();
 
 const MAX_OUTBOX = 5_000;
@@ -59,11 +60,11 @@ const MAX_PROCESSED = 10_000;
 function signEnvelope(env: Omit<AtlasEvent, "signature">): string {
   const canonical = JSON.stringify(env, Object.keys(env).sort());
   const mac = createHmac("sha256", SIGNING_KEY).update(canonical).digest("hex");
-  return `hmac-sha256:\${mac}`;
+  return `hmac-sha256:${mac}`;
 }
 
 function newEventId(): string {
-  return `evt_\${Date.now().toString(36)}_\${randomBytes(6).toString("hex")}`;
+  return `evt_${Date.now().toString(36)}_${randomBytes(6).toString("hex")}`;
 }
 
 export interface PublishInput<T extends AtlasEventType> {
@@ -81,7 +82,7 @@ export async function publish<T extends AtlasEventType>(
   input: PublishInput<T>,
 ): Promise<AtlasEvent> {
   const schema = EventSchemas[input.type];
-  if (!schema) throw new Error(`Unknown event type: \${input.type}`);
+  if (!schema) throw new Error(`Unknown event type: ${input.type}`);
 
   const envelopeNoSig: AtlasEvent = {
     event_id: newEventId(),
@@ -103,7 +104,7 @@ export async function publish<T extends AtlasEventType>(
   if (!parsed.success) {
     metrics.counter("atlas_event_validation_errors_total").inc({ type: input.type });
     throw new Error(
-      `Event schema validation failed for \${input.type}: \${parsed.error.message}`,
+      `Event schema validation failed for ${input.type}: ${parsed.error.message}`,
     );
   }
 
@@ -116,6 +117,7 @@ export async function publish<T extends AtlasEventType>(
     status: "pending",
   });
   if (outbox.length > MAX_OUTBOX) outbox.splice(0, outbox.length - MAX_OUTBOX);
+  saveJsonArray("eventbus-outbox", outbox);
 
   metrics.counter("atlas_events_published_total").inc({ type: input.type });
 
@@ -124,7 +126,7 @@ export async function publish<T extends AtlasEventType>(
 
   recordAudit({
     actor: input.actor_id ?? "system",
-    action: `event.\${input.type}`,
+    action: `event.${input.type}`,
     policy: "events.v1",
     payload: { event_id: envelope.event_id, federation_id: input.federation_id },
     correlationId: input.correlation_id,
@@ -172,6 +174,7 @@ async function deliver(row: OutboxRow): Promise<void> {
   }
   if (processed.length > MAX_PROCESSED)
     processed.splice(0, processed.length - MAX_PROCESSED);
+  saveJsonArray("eventbus-processed", processed);
 }
 
 async function drainOutbox(): Promise<void> {
@@ -182,6 +185,7 @@ async function drainOutbox(): Promise<void> {
       await deliver(row);
       row.status = "published";
       row.published_at = new Date().toISOString();
+      saveJsonArray("eventbus-outbox", outbox);
       metrics.counter("atlas_events_delivered_total").inc({
         type: row.envelope.event_type,
       });
@@ -198,6 +202,7 @@ async function drainOutbox(): Promise<void> {
           parked_at: new Date().toISOString(),
         });
         if (dlq.length > MAX_DLQ) dlq.splice(0, dlq.length - MAX_DLQ);
+        saveJsonArray("eventbus-dlq", dlq);
         metrics.counter("atlas_events_dlq_total").inc({
           type: row.envelope.event_type,
         });

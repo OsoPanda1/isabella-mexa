@@ -203,9 +203,18 @@ export function buildCheckoutUrl(planId: IsabellaPlanId, userId: string): string
   const plan = planById(planId);
   const baseUrl = process.env.BILLING_CHECKOUT_BASE_URL || process.env.PUBLIC_APP_URL || "http://localhost:3000";
   const priceEnv = plan.stripePriceEnv ? process.env[plan.stripePriceEnv] : undefined;
-  const url = new URL("/api/v1/billing/checkout/mock", baseUrl);
-  url.searchParams.set("plan", plan.id);
-  url.searchParams.set("user", userId);
-  if (priceEnv) url.searchParams.set("price", priceEnv);
+  if (process.env.NODE_ENV !== "production" && process.env.ENABLE_MOCK_CHECKOUT === "true") {
+    const url = new URL("/api/v1/billing/checkout/mock", baseUrl);
+    url.searchParams.set("plan", plan.id);
+    url.searchParams.set("user", userId);
+    if (priceEnv) url.searchParams.set("price", priceEnv);
+    return url.toString();
+  }
+  if (!priceEnv) {
+    return `${baseUrl.replace(/\/$/, "")}/billing/contact?plan=${encodeURIComponent(plan.id)}`;
+  }
+  const url = new URL(process.env.STRIPE_CHECKOUT_URL || "/api/v1/billing/checkout/provider", baseUrl);
+  url.searchParams.set("price", priceEnv);
+  url.searchParams.set("client_reference_id", userId);
   return url.toString();
 }

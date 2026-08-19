@@ -71,7 +71,7 @@ export async function anchorDocument(input: {
     signatures.push({
       federation_id: fed,
       hash: input.hash,
-      signature: `ed25519-sim:\${sig.slice(0, 32)}`,
+      signature: `ed25519-sim:${sig.slice(0, 32)}`,
       timestamp: ts,
     });
   }
@@ -79,7 +79,7 @@ export async function anchorDocument(input: {
   const required = 4;
   const root = merkleRoot(signatures.map((s) => s.signature));
   const anchor: AnchorRecord = {
-    anchor_id: `ANCH-\${Date.now().toString(36).toUpperCase()}-\${Math.floor(Math.random() * 1e6).toString(36).toUpperCase()}`,
+    anchor_id: `ANCH-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1e6).toString(36).toUpperCase()}`,
     document_uid: input.document_uid,
     merkle_root: root,
     signatures,
