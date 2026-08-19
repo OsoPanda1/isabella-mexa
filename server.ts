@@ -10,6 +10,8 @@ import { ISABELLA_SQL_MIGRATION, SCHEMA_TABLES } from "./src/data/isabellaMigrat
 import { ISABELLA_BLUEPRINT } from "./src/data/isabellaBlueprint";
 import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
+import { QuantumBridgeRequestSchema, quantumGuard, runQuantumBridge } from "./src/lib/quantum-bridge.server";
+import { summarizeIsabellaV5Fusion } from "./src/lib/isabella-v5";
 import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
 import { authenticate, requireRole, requireScope, currentPrincipal } from "./src/lib/auth.server";
 import {
@@ -164,6 +166,11 @@ async function executeGeminiWithCascade(
 }
 
 
+
+app.get("/api/v1/isabella/v5/fusion", authenticate, (_req, res) => {
+  res.json({ ok: true, fusion: summarizeIsabellaV5Fusion() });
+});
+
 // Governed PennyLane quantum ML bridge
 app.get("/api/v1/quantum/pennylane/status", authenticate, requireScope("quantum:execute"), async (req, res) => {
   try {
@@ -191,7 +198,8 @@ app.get("/api/health", (req, res) => {
     status: "online",
     system: "Isabella Villaseñor AI Core",
     crownLayer: "Active",
-    modules: ["ISA", "SOPHIA", "CROWN_GATEWAY", "ORION", "ARGUS"],
+    modules: ["CROWN", "ISA", "SOPHIA", "ORION", "ARGUS", "MNEMOSYNE", "TELLUS", "CHRONOS", "HERMES", "AXIOMA", "PRAXIS", "HARMONIA"],
+    architecture: summarizeIsabellaV5Fusion(),
     geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
     voiceEngine: "Synthesizer & TTS Gateway Online",
     visualEngine: "Imagen & Neural Canvas Studio Online",
