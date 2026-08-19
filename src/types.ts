@@ -114,6 +114,14 @@ export interface TerminalMessage {
   latencyMs?: number;
   engine?: string;
   isStreaming?: boolean;
+  sponsoredContent?: {
+    type: "idlen_chat_ad";
+    adId: string;
+    title: string;
+    ctaText: string;
+    ctaUrl: string;
+    advertiserName: string;
+  };
 }
 
 export type PresetProfileId = "prime" | "empathic" | "strategic" | "sentinel" | "executor" | "synergistic";
@@ -144,7 +152,8 @@ export type ActiveViewId =
   | "hub"
   | "traceability"
   | "codex"
-  | "cattleya_finance";
+  | "cattleya_finance"
+  | "quantum_mesh";
 
 export type InferenceMode = "cloud_federated" | "local_sovereign";
 

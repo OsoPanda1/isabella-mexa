@@ -977,6 +977,25 @@ CRITICAL: Return a valid JSON response strictly following this schema:
         };
       }
 
+      // Idlen: inject contextual ad into Gemini response
+      const msgCount = (history?.length || 0) + 1;
+      const { text: replyWithAd, ad: geminiAd } = await maybeAppendAd(parsedData.reply || "", {
+        sessionId: `session-${Date.now()}`,
+        userMessage: input,
+        messageCount: msgCount,
+      });
+      if (geminiAd) {
+        parsedData.reply = replyWithAd;
+        (parsedData as any).sponsoredContent = {
+          type: "idlen_chat_ad",
+          adId: geminiAd.adId,
+          title: geminiAd.title,
+          ctaText: geminiAd.ctaText,
+          ctaUrl: geminiAd.ctaUrl,
+          advertiserName: geminiAd.advertiserName,
+        };
+      }
+
       const totalLatency = Date.now() - startTime;
       return res.json({
         success: true,
@@ -995,6 +1014,26 @@ CRITICAL: Return a valid JSON response strictly following this schema:
 
   // Autonomous Hybrid Cognitive Engine (Local Fallback & High-Fidelity Simulation)
   const simulatedResponse = generateAutonomousCognitiveResponse(input, crownConfig, activePreset, isImageRequest);
+
+  // Idlen: inject contextual ad into local fallback response
+  const localMsgCount = (history?.length || 0) + 1;
+  const { text: localReplyWithAd, ad: localAd } = await maybeAppendAd(simulatedResponse.reply || "", {
+    sessionId: `session-${Date.now()}`,
+    userMessage: input,
+    messageCount: localMsgCount,
+  });
+  if (localAd) {
+    simulatedResponse.reply = localReplyWithAd;
+    (simulatedResponse as any).sponsoredContent = {
+      type: "idlen_chat_ad",
+      adId: localAd.adId,
+      title: localAd.title,
+      ctaText: localAd.ctaText,
+      ctaUrl: localAd.ctaUrl,
+      advertiserName: localAd.advertiserName,
+    };
+  }
+
   const totalLatency = Date.now() - startTime;
 
   return res.json({
@@ -1135,6 +1174,286 @@ I am not merely a chatbot or a single model: I am the system orchestrating how a
 }
 
 import { bootstrapCanonicalDocuments } from "./src/lib/bootstrap-canonical";
+import {
+  executeQuantumMesh,
+  getMeshStatus,
+  getDeviceRegistry,
+  getEnabledDevices,
+  runSmokeTest,
+  runFullDiagnostics,
+  getRegistryMetrics,
+  evaluateQuantumPolicy as evalQuantumPolicy,
+  getPolicyAuditLog,
+  getPolicyMetrics,
+  quantumScheduler,
+  getCircuitStatus,
+  getCircuitBreakerMetrics,
+  resetCircuit,
+  getWorkerStatus,
+  registerWorker as registerQuantumWorker,
+  replaceWorker,
+  checkHeartbeats,
+  getRecentBlocks,
+  getBookPIMetrics,
+  verifyChainIntegrity,
+  getHSMStatus,
+  resetHSMCircuits,
+  getHSMMetrics,
+  getTEEStatus,
+  getEventLog,
+  getEventBusMetrics,
+  getCoreModulesStatus,
+  getTelemetrySnapshot,
+  getActiveIncidents,
+  getAllIncidents,
+  resolveIncident,
+  getRecoveryMetrics,
+  handlePennyLaneAbsent,
+  handleWorkerHung,
+  handleRemoteProviderDown,
+  handleHSMUnavailable,
+  handleTEEUnverifiable,
+  handleBookPIPostgresDown,
+  handleFederationNodeMalicious,
+  QUANTUM_SQL_MIGRATION,
+  QUANTUM_SQL_INDEXES,
+  QUANTUM_SCHEMA_TABLES,
+} from "./src/lib/quantum";
+import { PrincipalSchema } from "./src/lib/quantum/contracts";
+import { randomUUID } from "crypto";
+import { getIsabellaAd, maybeAppendAd, getIdlenStatus } from "./src/lib/idlen-ads.server";
+
+// ============================================================================
+// ISABELLA QUANTUM MESH — GOVERNED QUANTUM-CLASSICAL EXECUTION PLATFORM
+// ============================================================================
+
+// 1. POST /api/v1/quantum/execute — Full mesh execution (13-step governed pipeline)
+app.post("/api/v1/quantum/execute", rateLimit, authenticate, requireScope("quantum:execute"), async (req, res) => {
+  try {
+    const body = req.body || {};
+    const principal = currentPrincipal(req);
+    const traceId = req.headers["x-trace-id"] as string || `trace-${randomUUID()}`;
+
+    const request = {
+      schema: "isabella-quantum-v1" as const,
+      requestId: randomUUID(),
+      traceId,
+      tenantId: principal.tenantId,
+      subjectId: principal.sub,
+      provider: body.provider || "default.qubit",
+      repository: body.repository || "PennyLaneAI/pennylane",
+      mode: body.mode || "analytic",
+      wires: body.wires || 4,
+      shots: body.shots || null,
+      features: body.features || [],
+      weights: body.weights || [],
+      scopes: principal.scopes,
+      policyVersion: "quantum-policy-v1",
+      metadata: body.metadata || {},
+    };
+
+    const parsed = PrincipalSchema.safeParse({
+      subjectId: principal.sub,
+      tenantId: principal.tenantId,
+      role: principal.roles?.[0] || "user",
+      scopes: principal.scopes,
+      webauthnVerified: false,
+      riskLevel: "low",
+    });
+
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: "Invalid principal", issues: parsed.error.issues });
+    }
+
+    const result = await executeQuantumMesh(request, parsed.data);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || String(err) });
+  }
+});
+
+// 2. GET /api/v1/quantum/mesh/status — Full mesh status (all subsystems)
+app.get("/api/v1/quantum/mesh/status", authenticate, (req, res) => {
+  res.json({ ok: true, mesh: getMeshStatus() });
+});
+
+// 3. GET /api/v1/quantum/devices — Device registry
+app.get("/api/v1/quantum/devices", authenticate, (req, res) => {
+  res.json({ ok: true, devices: getDeviceRegistry(), metrics: getRegistryMetrics() });
+});
+
+// 4. GET /api/v1/quantum/devices/enabled — Enabled devices only
+app.get("/api/v1/quantum/devices/enabled", authenticate, (req, res) => {
+  res.json({ ok: true, devices: getEnabledDevices() });
+});
+
+// 5. POST /api/v1/quantum/devices/smoke-test — Run smoke test on a provider
+app.post("/api/v1/quantum/devices/smoke-test", rateLimit, authenticate, requireRole("operator"), async (req, res) => {
+  const { provider } = req.body || {};
+  if (!provider) return res.status(400).json({ ok: false, error: "provider is required" });
+  const result = await runSmokeTest(provider);
+  res.json({ ok: true, smokeTest: result });
+});
+
+// 6. POST /api/v1/quantum/devices/full-diagnostics — Full diagnostics scan
+app.post("/api/v1/quantum/devices/full-diagnostics", rateLimit, authenticate, requireRole("operator"), async (req, res) => {
+  const result = await runFullDiagnostics();
+  res.json({ ok: true, diagnostics: result });
+});
+
+// 7. GET /api/v1/quantum/policy — Policy audit log
+app.get("/api/v1/quantum/policy", authenticate, (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json({ ok: true, metrics: getPolicyMetrics(), recentDecisions: getPolicyAuditLog(limit) });
+});
+
+// 8. GET /api/v1/quantum/scheduler — Queue status
+app.get("/api/v1/quantum/scheduler", authenticate, (req, res) => {
+  res.json({ ok: true, scheduler: quantumScheduler.status() });
+});
+
+// 9. GET /api/v1/quantum/circuit-breaker — Circuit breaker status
+app.get("/api/v1/quantum/circuit-breaker", authenticate, (req, res) => {
+  res.json({ ok: true, circuits: getCircuitStatus(), metrics: getCircuitBreakerMetrics() });
+});
+
+// 10. POST /api/v1/quantum/circuit-breaker/reset — Reset a circuit
+app.post("/api/v1/quantum/circuit-breaker/reset", authenticate, requireRole("operator"), (req, res) => {
+  const { provider } = req.body || {};
+  if (!provider) return res.status(400).json({ ok: false, error: "provider is required" });
+  resetCircuit(provider);
+  res.json({ ok: true, message: `Circuit reset for ${provider}` });
+});
+
+// 11. GET /api/v1/quantum/workers — Worker status
+app.get("/api/v1/quantum/workers", authenticate, (req, res) => {
+  res.json({ ok: true, workers: getWorkerStatus() });
+});
+
+// 12. POST /api/v1/quantum/workers/heartbeat-check — Check for hung workers
+app.post("/api/v1/quantum/workers/heartbeat-check", authenticate, requireRole("operator"), (req, res) => {
+  const killed = checkHeartbeats();
+  res.json({ ok: true, killedWorkers: killed });
+});
+
+// 13. GET /api/v1/quantum/bookpi — BookPI audit chain
+app.get("/api/v1/quantum/bookpi", authenticate, (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json({
+    ok: true,
+    metrics: getBookPIMetrics(),
+    chainIntegrity: verifyChainIntegrity(),
+    recentBlocks: getRecentBlocks(limit),
+  });
+});
+
+// 14. GET /api/v1/quantum/hsm — HSM status
+app.get("/api/v1/quantum/hsm", authenticate, requireRole("operator"), (req, res) => {
+  res.json({ ok: true, hsm: getHSMStatus(), metrics: getHSMMetrics() });
+});
+
+// 15. POST /api/v1/quantum/hsm/reset — Reset HSM circuits
+app.post("/api/v1/quantum/hsm/reset", authenticate, requireRole("admin"), (req, res) => {
+  resetHSMCircuits();
+  res.json({ ok: true, message: "HSM circuits reset" });
+});
+
+// 16. GET /api/v1/quantum/tee — TEE attestation status
+app.get("/api/v1/quantum/tee", authenticate, (req, res) => {
+  res.json({ ok: true, tee: getTEEStatus() });
+});
+
+// 17. GET /api/v1/quantum/events — Event log
+app.get("/api/v1/quantum/events", authenticate, (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 100;
+  res.json({ ok: true, events: getEventLog(limit), metrics: getEventBusMetrics() });
+});
+
+// 18. GET /api/v1/quantum/cores — 24 Core modules status
+app.get("/api/v1/quantum/cores", authenticate, (req, res) => {
+  res.json({ ok: true, cores: getCoreModulesStatus() });
+});
+
+// 19. GET /api/v1/quantum/telemetry — Full telemetry snapshot
+app.get("/api/v1/quantum/telemetry", authenticate, (req, res) => {
+  res.json({ ok: true, telemetry: getTelemetrySnapshot() });
+});
+
+// 20. GET /api/v1/quantum/recovery — Active incidents
+app.get("/api/v1/quantum/recovery", authenticate, (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 50;
+  res.json({ ok: true, active: getActiveIncidents(), all: getAllIncidents(limit), metrics: getRecoveryMetrics() });
+});
+
+// 21. POST /api/v1/quantum/recovery/resolve — Resolve an incident
+app.post("/api/v1/quantum/recovery/resolve", authenticate, requireRole("operator"), (req, res) => {
+  const { incidentId } = req.body || {};
+  if (!incidentId) return res.status(400).json({ ok: false, error: "incidentId is required" });
+  const resolved = resolveIncident(incidentId);
+  res.json({ ok: resolved, incidentId });
+});
+
+// 22. GET /api/v1/quantum/migrations — Quantum SQL schema
+app.get("/api/v1/quantum/migrations", authenticate, (req, res) => {
+  res.json({
+    ok: true,
+    filename: "002_create_quantum_tables.sql",
+    target: "PostgreSQL 15+ / Supabase",
+    tables: QUANTUM_SCHEMA_TABLES,
+    migrations: QUANTUM_SQL_MIGRATION,
+    indexes: QUANTUM_SQL_INDEXES,
+  });
+});
+
+// 23. GET /api/v1/quantum/blueprint — Full architecture blueprint
+app.get("/api/v1/quantum/blueprint", authenticate, (req, res) => {
+  res.json({
+    ok: true,
+    blueprint: {
+      name: "Isabella Quantum Mesh",
+      version: "1.0.0",
+      architecture: "Governed Hybrid Quantum-Classical Execution Platform",
+      layers: [
+        "Interface (Isabella UI, Cattleya, Console)",
+        "Identity (WebAuthn, session, tenant, roles, scopes)",
+        "Isabella Gateway (validation, rate limit, idempotency, tracing)",
+        "ARGUS Policy Plane (limits, provider allow-list, approval, risk)",
+        "Yun Orchestrator (cognitive intent, planning, no crypto authority)",
+        "Quantum Control Plane (registry, scheduler, queue, circuit breaker, audit)",
+        "Execution Data Plane (worker-core, lightning, qiskit, braket, rigetti, catalyst)",
+        "HSM/TEE (keys, attestation)",
+        "BookPI/CRYSTALS-LATAMV (provenance, hash, replication)",
+        "PostgreSQL/Event Bus/Backup (Heptafederado)",
+      ],
+      coreModules: 24,
+      deviceProviders: getDeviceRegistry().map((d) => d.provider),
+      eventTypes: [
+        "quantum.request.accepted", "quantum.request.rejected",
+        "quantum.job.queued", "quantum.job.started", "quantum.job.completed",
+        "quantum.job.degraded", "quantum.job.failed", "quantum.worker.replaced",
+        "quantum.provider.unavailable", "quantum.policy.changed",
+        "quantum.audit.committed", "quantum.federation.replicated", "quantum.recovery.activated",
+      ],
+      safetyRules: [
+        "Never label fallback as quantum",
+        "Never label simulator as physical hardware",
+        "No agent can self-elevate scopes",
+        "No provider operates without credentials",
+        "Queue has hard limit and controlled rejection",
+        "Dead worker is replaced",
+        "Timeouts kill isolated process",
+        "Result has circuit hash",
+        "BookPI event has previous hash",
+        "High-impact event has HSM signature",
+        "TEE only verified after validating evidence",
+        "PostgreSQL persists execution and audit transactionally",
+        "Heptafederado replicates only authorized events",
+        "Chaos tests and failover tests required",
+      ],
+      simmetry: "identify -> validate -> authorize -> execute -> measure -> sign -> persist -> replicate -> reconcile",
+    },
+  });
+});
 
 // Vite middleware & Static Serving
 async function startServer() {

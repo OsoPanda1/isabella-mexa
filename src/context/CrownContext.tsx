@@ -838,6 +838,7 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
           generatedImage: payload.generatedImage,
           latencyMs: meta.latencyMs || 420,
           engine: meta.engine || "Gemini-3.7-Flash",
+          sponsoredContent: payload.sponsoredContent,
         };
 
         soundManager.playArrival();

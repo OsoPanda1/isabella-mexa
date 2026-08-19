@@ -294,6 +294,20 @@ export const Header: React.FC = () => {
 
             <button
               type="button"
+              onClick={() => handleTabClick("quantum_mesh")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
+                activeView === "quantum_mesh"
+                  ? "bg-slate-800 text-slate-100 font-bold border border-slate-600 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+              }`}
+              title="Isabella Quantum Mesh - Governed Hybrid Quantum-Classical Execution"
+            >
+              <Zap className="w-3.5 h-3.5 text-violet-400" />
+              <span>Quantum</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleTabClick("hub")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap cursor-pointer ${
                 activeView === "hub"

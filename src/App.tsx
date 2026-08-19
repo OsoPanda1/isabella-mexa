@@ -13,6 +13,7 @@ import { IsabellaHubView } from "./components/Hub/IsabellaHubView";
 import { TraceabilityDashboard } from "./components/Traceability/TraceabilityDashboard";
 import { CodexView } from "./components/Codex/CodexView";
 import { CattleyaFinanceView } from "./components/Dashboard/CattleyaFinanceView";
+import { QuantumMeshDashboard } from "./components/Quantum/QuantumMeshDashboard";
 import { IsabellaWelcomeModal } from "./components/Welcome/IsabellaWelcomeModal";
 import { IsabellaCinematicTrailer } from "./components/Welcome/IsabellaCinematicTrailer";
 import { KeyboardShortcutsModal } from "./components/Shortcuts/KeyboardShortcutsModal";
@@ -55,6 +56,7 @@ const MainContent: React.FC = () => {
         {activeView === "hub" && <IsabellaHubView />}
         {activeView === "codex" && <CodexView />}
         {activeView === "cattleya_finance" && <CattleyaFinanceView />}
+        {activeView === "quantum_mesh" && <QuantumMeshDashboard />}
       </main>
 
       {/* 16-Second AAA Cinematic Intro Trailer (Auto-opens on link entry) */}

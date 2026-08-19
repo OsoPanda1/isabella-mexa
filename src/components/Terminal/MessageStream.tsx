@@ -224,6 +224,38 @@ export const MessageStream: React.FC<MessageStreamProps> = ({ messages }) => {
                 </div>
               )}
 
+              {/* Idlen Sponsored Content Card */}
+              {msg.sponsoredContent && msg.sponsoredContent.type === "idlen_chat_ad" && (
+                <div className="mt-4 pt-3 border-t border-slate-800/60">
+                  <a
+                    href={msg.sponsoredContent.ctaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && window.idlen) {
+                        window.idlen("click", msg.sponsoredContent!.adId);
+                      }
+                    }}
+                    className="group block rounded-2xl border border-slate-800/80 bg-[#081220]/80 hover:bg-[#0B1A2E] p-4 transition-all duration-200 hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-950/20"
+                  >
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400/80 font-semibold">
+                        Recomendación patrocinada
+                      </span>
+                      <span className="text-[10px] text-slate-500">•</span>
+                      <span className="text-[10px] text-slate-500">{msg.sponsoredContent.advertiserName}</span>
+                    </div>
+                    <p className="text-sm font-sans text-[#F1F5F9] mb-3 leading-relaxed">
+                      {msg.sponsoredContent.title}
+                    </p>
+                    <div className="flex items-center gap-2 text-xs font-mono font-semibold text-amber-300 group-hover:text-amber-200 transition-colors">
+                      <span>{msg.sponsoredContent.ctaText}</span>
+                      <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
+                    </div>
+                  </a>
+                </div>
+              )}
+
               {/* Cognitive Telemetry & Routing Accordion */}
               {msg.cognitiveTelemetry && (
                 <div className="mt-4 pt-3 border-t border-slate-800/80">

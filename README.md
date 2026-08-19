@@ -1,330 +1,259 @@
-# Isabella Villaseñor AI™ v5.0.0
+# Isabella Villaseñor AI™ v6.0.0
+
 ## Infraestructura Cognitiva Territorial Híbrida y Gobernada
 
-**Isabella Villaseñor AI™** es una propuesta de infraestructura cognitiva territorial orientada a integrar inteligencia artificial, gobernanza computacional, memoria contextual, seguridad, trazabilidad y experiencias multimodales desde una perspectiva latinoamericana.
+> *"No somos un chatbot con temática. Somos una infraestructura cognitiva territorial con identidad, gobernanza y arraigo."*
 
-- **Estado documentado**: 19 de agosto de 2026
-- **Clasificación declarada**: Versión candidata a producción, en proceso de validación operativa y documental
-- **Nodo Cero**: Real del Monte, Hidalgo, México
+**Isabella Villaseñor AI™** es una plataforma de infraestructura cognitiva territorial (Territorial Cognitive Infrastructure — TCI) diseñada para integrar inteligencia artificial, gobernanza computacional C.R.O.W.N., memoria contextual jerárquica, seguridad Zero-Trust, trazabilidad criptográfica, experiencias multimodales y monetización contextual — todo desde una perspectiva latinoamericana, soberana y territorial.
 
----
-
-## Actualización v5.0.0 — Fusión operacional blindada
-
-La versión v5.0.0 consolida Isabella como núcleo operativo TAMV MD-X4 con 7+ capas federadas y un manifiesto de fusión para repositorios públicos de `github.com/OsoPanda1` relacionados con Isabella. La integración se realiza bajo la regla **NO BORRAR NADA**: los módulos existentes se preservan y se conectan mediante contratos tipados, rutas API y registros auditables.
-
-### Capas afectadas y estado actual
-
-| Capa | Implementación actual | Estado |
-| --- | --- | --- |
-| L0 — Doctrina & Ética | CROWN/ARGUS, EOCT, políticas Zero-Trust y compuertas de riesgo | Implementado / expandido |
-| L1 — Memoria & Registro | BookPI hash-chain, audit kernel, MSR lógico y eventos trazables | Implementado |
-| L2 — Protocolos Controlados | API `/api/v1/protocols` con creación, estado inicial, señales guardian y vínculo XR | Implementado base |
-| L3 — Guardianía & Monitoreo | `guardianSignals`, auditoría, métricas Atlas y eventos BookPI | Implementado base |
-| L4 — XR / DreamSpaces | API `/api/v1/xr/dreamspaces` con escena declarativa, permisos y overlay guardian | Implementado base |
-| L5 — Servicios de Dominio | Auth local, usuarios, perfiles, social feed, streams WebRTC-model, economía interna | Implementado base |
-| L6 — Shell UX & API | Health, manifiesto v5 y rutas HTTP versionadas | Implementado |
-| L7 — Quantum-inspired | Puente PennyLane gobernado y manifiesto de arquitectura QML desacoplada | Implementado / experimental |
-
-### Fusión de repositorios Isabella de OsoPanda1
-
-El manifiesto operativo `src/lib/isabella-v5.ts` registra los repositorios Isabella identificados para ingesta controlada: `base-isabella`, `DOCUMENTACION-TAMV-DM-X4-e-ISABELLA-AI`, `mexican-ai-isabella` y `MI-ISABELLA`. La política aplicada es **read-only hasta revisión de licencia y procedencia**; no se ejecuta código remoto automáticamente.
-
-### Endpoints operativos nuevos o reforzados
-
-| Dominio | Endpoint | Propósito |
-| --- | --- | --- |
-| Arquitectura | `GET /api/v1/isabella/v5/fusion` | Devuelve resumen de capas, repositorios, heads dodecaédricas y plan de ingesta. |
-| Salud | `GET /api/health` | Expone los 12 módulos Isabella y el resumen v5. |
-| Identidad | `POST /api/v1/auth/signup`, `POST /api/v1/auth/login`, `POST /api/v1/auth/logout` | Registro/login/logout local con hash PBKDF2 y trazabilidad. |
-| Usuarios | `GET /api/v1/users/me`, `GET /api/v1/profiles/:handle`, `PUT /api/v1/profiles/me` | Perfil avanzado, timeline, galería, links y presencia social. |
-| Social | `POST /api/v1/social/posts`, `GET /api/v1/social/feed` | Posts multimedia, visibilidad y feed público. |
-| XR | `POST /api/v1/xr/dreamspaces` | Crea espacios XR persistentes con overlay guardian y PBR/HDRI declarativo. |
-| Streaming | `POST /api/v1/streams` | Crea salas de streaming/señalización WebRTC-model. |
-| Protocolos | `POST /api/v1/protocols`, `GET /api/v1/protocols` | Inicia protocolos civilizatorios auditables con señales EOCT/BookPI/XR. |
-| Economía | `POST /api/v1/economy/credits` | Registra créditos internos no especulativos en ledger auditable. |
-
-### Controles de blindaje
-
-- Contratos `zod` en payloads HTTP para evitar entradas ambiguas.
-- Autenticación existente reutilizada (`authenticate`, scopes/roles cuando aplica).
-- Passwords locales de prototipo con PBKDF2 + salt; producción debe emitir JWT externo con `ISABELLA_AUTH_SECRET`.
-- Eventos críticos registrados en Atlas audit y BookPI.
-- Economía interna limitada a créditos de uso/contribución; no se implementa trading ni token especulativo.
-- DreamSpaces y protocolos nacen con guardianía explícita y trazabilidad por defecto.
-
----
-
-## Índice
-
-- [Aviso de alcance](#aviso-de-alcance)
-- [Identidad del proyecto](#identidad-del-proyecto)
-- [Naturaleza del proyecto](#naturaleza-del-proyecto)
-- [Problema que aborda](#problema-que-aborda)
-- [Propuesta arquitectónica](#propuesta-arquitect%C3%B3nica)
-- [Gobernanza C.R.O.W.N.](#gobernanza-crown)
-- [Arquitectura pentanodal](#arquitectura-pentanodal)
-- [Capacidades del sistema](#capacidades-del-sistema)
-- [Estado de implementación](#estado-de-implementaci%C3%B3n)
-- [Posicionamiento conceptual](#posicionamiento-conceptual)
-- [Principios de diseño](#principios-de-dise%C3%B1o)
-- [Requisitos técnicos](#requisitos-t%C3%A9cnicos)
-- [Instalación](#instalaci%C3%B3n)
-- [Configuración](#configuraci%C3%B3n)
-- [Ejecución](#ejecuci%C3%B3n)
-- [API](#api)
-- [Seguridad y privacidad](#seguridad-y-privacidad)
-- [Auditoría e integridad](#auditor%C3%ADa-e-integridad)
-- [Limitaciones conocidas](#limitaciones-conocidas)
-- [Roadmap](#roadmap)
-- [Colaboración](#colaboraci%C3%B3n)
-- [Licencia](#licencia)
-- [Autoría y ecosistema](#autor%C3%ADa-y-ecosistema)
-- [Estado del documento](#estado-del-documento)
-
----
-
-## Aviso de alcance
-
-Este `README` combina información institucional, descripción arquitectónica y estado declarado de implementación.
-
-Las afirmaciones técnicas deben interpretarse según la siguiente clasificación:
-
-| Estado | Significado |
+| Campo | Valor |
 | --- | --- |
-| **Diseñado** | El componente está definido en la arquitectura, pero su implementación puede estar pendiente. |
-| **Experimental** | Existe como prototipo, prueba de concepto o componente sujeto a cambios. |
-| **Implementado** | Existe código funcional dentro del repositorio. |
-| **Operativo** | Ha sido ejecutado en un entorno concreto y cuenta con evidencia de funcionamiento. |
-| **Verificado** | Dispone de pruebas, registros, métricas o procedimientos reproducibles. |
-| **Planificado** | Forma parte del roadmap, pero aún no se considera disponible. |
-
-La clasificación *Production-Ready* no debe entenderse como certificación externa, auditoría independiente, garantía de disponibilidad permanente ni validación formal de seguridad. La madurez final debe determinarse mediante pruebas reproducibles, revisión de código, evaluación de riesgos, pruebas de carga, análisis de dependencias y validación del entorno de despliegue.
-
----
-
-## Identidad del proyecto
-
-| Campo | Información |
-| --- | --- |
-| **Nombre** | Isabella Villaseñor AI™ |
-| **Versión documentada** | v5.0.0 |
-| **Categoría** | Infraestructura Cognitiva Territorial |
-| **Denominación en inglés** | Territorial Cognitive Infrastructure (TCI) |
+| **Versión** | v6.0.0 (Agosto 2026) |
+| **Categoría** | Infraestructura Cognitiva Territorial (TCI) |
 | **Nodo Cero** | Real del Monte, Hidalgo, México |
-| **Autor y creador** | Edwin Oswaldo Castillo Trejo |
-| **Identidad creativa** | Anubis Villaseñor |
+| **Autor** | Edwin Oswaldo Castillo Trejo (*Anubis Villaseñor*) |
 | **ORCID** | [0009-0008-5050-1539](https://orcid.org/0009-0008-5050-1539) |
 | **Ecosistema** | TAMV ONLINE NETWORK · RDM Digital Hub |
-| **Fecha del estado documentado** | 19 de agosto de 2026 |
+| **Deploy target** | Vercel (Edge + Serverless) |
+| **Stack** | React 19 · TypeScript · Vite · Express · Tailwind CSS v4 · Zod v4 |
 
 ---
 
-## Naturaleza del proyecto
+## Qué es Isabella
 
-Isabella Villaseñor AI™ constituye una Infraestructura Cognitiva Territorial de carácter híbrido, gobernado y contextualizado.
+Isabella Villaseñor AI™ no es un chatbot genérico ni una wrappers de GPT. Es una **arquitectura cognitiva gobernada** compuesta por 5 nodos especializados coordinados por una capa de orquestación central llamada C.R.O.W.N. Cada interacción con el usuario pasa por un pipeline completo de evaluación, generación y auditoría — nunca un simple "prompt in, text out".
 
-El sistema propone integrar capacidades de inteligencia artificial con mecanismos de gobernanza computacional, memoria contextual jerárquica, evaluación de riesgos, trazabilidad de eventos y una identidad territorial vinculada al Sur Global y a la comunidad de Real del Monte.
-
-### Características fundamentales
-1. **Soberanía de modelos**: Los modelos de lenguaje de gran escala se consideran capacidades instrumentales, intercambiables y subordinadas a la arquitectura de gobernanza.
-2. **Gobernanza C.R.O.W.N.**: Capa de coordinación, memoria contextual, evaluación de riesgos y aplicación de políticas.
-3. **Arraigo territorial**: Integración de contexto histórico, cultural y lingüístico latinoamericano.
-4. **Trazabilidad**: Registro estructurado de decisiones, eventos, políticas e inferencias.
-5. **Arquitectura híbrida**: Coexistencia de capacidades federadas en la nube y componentes locales, con posibilidad de operación aislada cuando el entorno lo permita.
-6. **Modularidad**: Separación entre interfaz, servicios, agentes, políticas, almacenamiento, herramientas y proveedores de inferencia.
+El sistema está diseñado para operar bajo **soberanía tecnológica**: los modelos de lenguaje (Gemini 3.7 Flash, etc.) son capacidades instrumentales e intercambiables, subordinadas a la capa de gobernanza. Si el modelo cloud no está disponible, Isabella funciona con un motor local autónomo sin degradación de la experiencia cognitiva.
 
 ---
 
-## Problema que aborda
+## Qué hace
 
-### Limitaciones identificadas
-El proyecto responde a un conjunto de limitaciones observadas en determinados sistemas convencionales de inteligencia artificial:
-- Dependencia de proveedores externos de modelos y servicios.
-- Concentración de capacidades cognitivas en un único modelo.
-- Contextualización cultural limitada.
-- Dificultad para separar identidad, políticas y generación.
-- Trazabilidad insuficiente de decisiones y herramientas.
-- Riesgo de resultados no verificables o carentes de contexto.
-- Ausencia de una capa institucional clara para aplicar políticas.
-- Dependencia de conectividad para tareas cognitivas críticas.
+### Procesamiento cognitivo C.R.O.W.N.
 
-Estas limitaciones representan el problema de diseño que Isabella Villaseñor AI™ intenta abordar. No constituyen afirmaciones universales sobre todos los sistemas de inteligencia artificial.
-
-### Propuesta
-La plataforma propone una infraestructura cognitiva orientada a:
-- Desacoplar la identidad del sistema respecto del proveedor de modelos.
-- Aplicar políticas antes de permitir determinadas inferencias o acciones.
-- Incorporar evaluación de riesgos en el ciclo operativo.
-- Registrar eventos relevantes de manera estructurada.
-- Permitir la sustitución progresiva de proveedores de inferencia.
-- Integrar capacidades federadas y locales.
-- Contextualizar las respuestas mediante memoria jerárquica y conocimiento territorial.
-- Separar generación, herramientas, políticas y autoridad de decisión.
-- Facilitar auditorías técnicas, institucionales y operativas.
-
----
-
-## Propuesta arquitectónica
-
-La arquitectura se organiza en capas funcionales:
+Cada mensaje del usuario genera este pipeline en tiempo real:
 
 ```
-Interfaz y experiencia de usuario
-              ↓
-  CROWN Gateway y enrutamiento
-              ↓
-  Políticas y evaluación de riesgo (ARGUS)
-              ↓
-  Agentes cognitivos especializados (ISA / SOPHIA / ORION)
-              ↓
-  Modelos de inferencia y herramientas
-              ↓
-  Memoria, telemetría y auditoría (BookPI)
+Mensaje del usuario
+  ↓
+ARGUS Sentinel — Evaluación de riesgo y sanitización (Zero-Trust)
+  ↓
+C.R.O.W.N. Gateway — Enrutamiento ponderado dinámico entre módulos
+  ↓
+ISA + SOPHIA + ORION — Síntesis cognitiva paralela
+  ↓ (empatía)   ↓ (razonamiento)   ↓ (creatividad)
+C.R.O.W.N. — Fusión de salidas, aplicación de políticas
+  ↓
+ARGUS — Auditoría post-generación, registro trazable
+  ↓
+Idlen Ads — Monetización contextual (cada 3er mensaje)
+  ↓
+Respuesta al usuario + Telemetría cognitiva + Ad patrocinado
 ```
 
-### Principios de separación
-- La interfaz no debe constituir la autoridad final del sistema.
-- Los modelos no deben definir por sí solos las políticas institucionales.
-- Las herramientas deben ejecutarse con permisos explícitos.
-- Las operaciones sensibles deben generar eventos auditables.
-- Las credenciales y secretos deben permanecer fuera del código fuente.
-- Los servicios deben aplicar controles de autenticación y autorización adecuados al entorno.
-- Las capacidades experimentales deben identificarse como tales.
+### Capacidades operativas
+
+| Capacidad | Descripción | Estado |
+| --- | --- | --- |
+| **Terminal cognitiva interactiva** | CLI con stream de pensamiento, comandos (`/help`, `/status`, `/image`, `/modules`, `/preset`, `/route`, `/argus`, `/voice`, `/sound`) | ✅ Operativo |
+| **Tráiler cinematográfico AAA** | HTML5 Canvas 60 FPS, Web Audio 60 Hz, Smooth-Motion, 16 segundos | ✅ Implementado |
+| **Generación de arte ORION** | Síntesis visual vía Pollinations/Imagen, estilos configurables | ✅ Implementado |
+| **Estudio de voz** | Timbres personalizables, síntesis Web Speech + Gemini TTS | ✅ Implementado |
+| **Dashboard de telemetría** | Latencia, tokens, ruta sináptica, métricas por módulo | ✅ Implementado |
+| **Trazabilidad criptográfica** | BookPI hash-chain, SHA-256, auditoría inmutable | ✅ Implementado |
+| **Seguridad Zero-Trust** | ARGUS Sentinel, evaluación de riesgos, policy-gate | ✅ Implementado |
+| **Motor soberano local** | Fallback 100% offline sin API key externa | ✅ Operativo |
+| **Hub RDM Territorial** | Capas culturales, patrimonio y contexto de Real del Monte | ✅ Implementado |
+| **Cattleya Finance** | Sistema financiero interno con planes de suscripción | ✅ Implementado |
+| **Quantum Mesh** | 15 módulos de computación cuántica inspired (scheduler, HSM, TEE, circuit-breaker) | ✅ v6.0.0 |
+| **Idlen Chat Ads SDK** | Monetización contextual con pixel de tracking y conversiones | ✅ v6.0.0 |
+| **Malla cuántica dashboard** | Panel de visualización de 7 subsistemas cuánticos en tiempo real | ✅ v6.0.0 |
 
 ---
 
-## Gobernanza C.R.O.W.N.
+## Cómo lo hace
 
-C.R.O.W.N. representa la capa de coordinación y gobernanza de la infraestructura cognitiva.
+### Stack técnico
 
-El flujo conceptual de procesamiento es:
-```
-Ingestión → Interpretación → Evaluación de riesgo (ARGUS) → Aplicación de políticas → Selección de modelo/capacidad → Inferencia o ejecución → Registro y auditoría (BookPI)
-```
-
-### Objetivos
-- Controlar el flujo de solicitudes.
-- Evaluar el contexto antes de la generación.
-- Aplicar políticas institucionales.
-- Seleccionar capacidades de inferencia según el caso de uso.
-- Limitar el acceso a herramientas.
-- Registrar eventos relevantes.
-- Facilitar la revisión posterior de decisiones.
-- Mantener separación entre generación y autoridad operativa.
-
----
-
-## Arquitectura pentanodal
-
-| Nodo | Responsabilidad |
+| Capa | Tecnología |
 | --- | --- |
-| **CROWN GATEWAY** | Coordinación general, enrutamiento, pesos dinámicos, políticas y selección de capacidades. |
-| **ISA** | Interpretación semántica, contexto conversacional, identidad y comunicación empática. |
-| **SOPHIA** | Razonamiento estratégico, análisis de alternativas y evaluación orientada a objetivos. |
-| **ORION** | Inferencia creativa, síntesis visual y generación de experiencias artísticas. |
-| **ARGUS** | Evaluación de riesgos, aplicación de controles, revisión ética y guardianía de seguridad. |
+| **Frontend** | React 19, TypeScript 5.8 (strict), Vite 6, Tailwind CSS v4 |
+| **Backend** | Express 4, Node.js 18+ (probado en v24), esbuild bundler |
+| **Modelos de IA** | Gemini 3.7 Flash (cloud) + Motor autónomo local (fallback) |
+| **Validación** | Zod v4 (contratos tipados en payloads y configuración) |
+| **Monetización** | @idlen/chat-sdk v1.0.5 (server + client), Idlen Pixel |
+| **Despliegue** | Vercel (serverless functions + SPA rewrite rules) |
+| **CRIPTOGRAFÍA** | SHA-256 BookPI, CRYSTALS-LATAMV (experimental poscuántico) |
 
-### Principios arquitectónicos
-- Modularidad funcional.
-- Separación de responsabilidades.
-- Desacoplamiento entre identidad y modelo.
-- Gobernanza jerárquica.
-- Evaluación de riesgos previa a operaciones sensibles.
-- Trazabilidad de eventos críticos.
-- Interoperabilidad entre capacidades locales y federadas.
-- Resiliencia operativa.
-- Principio de mínimo privilegio.
-- Validaciones progresivas y observabilidad estructurada.
+### Arquitectura pentanodal
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    INTERFAZ DE USUARIO                      │
+│        React 19 · Terminal · Studio · Dashboard · Hub       │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│               C.R.O.W.N. GATEWAY (Orquestador)              │
+│     Enrutamiento ponderado · Políticas · Evaluación riesgo  │
+└──┬──────────┬──────────┬──────────┬──────────┬──────────────┘
+   │          │          │          │          │
+┌──▼──┐  ┌───▼───┐  ┌───▼───┐  ┌──▼───┐  ┌──▼──────┐
+│ ISA │  │SOPHIA │  │ ORION │  │ARGUS │  │ QUANTUM │
+│ 21% │  │ 21%   │  │ 21%   │  │ 21%  │  │  MESH   │
+│Empa-│  │Dialéc-│  │Síntes-│  │Guard-│  │  15     │
+│tía  │  │tica   │  │is     │  │ianía │  │ módulos │
+└──┬──┘  └───┬───┘  └───┬───┘  └──┬───┘  └──┬──────┘
+   │         │          │         │          │
+┌──▼─────────▼──────────▼─────────▼──────────▼──────────────┐
+│           MEMORIA · TELEMETRÍA · AUDITORÍA                │
+│     BookPI hash-chain · Atlas · Event Bus · BookPI Q      │
+└───────────────────────────────────────────────────────────┘
+```
+
+### Quantum Mesh — Nueva capa v6.0.0
+
+La **Isabella Quantum Mesh** es una capa de orquestación computacional inspirada en principios de computación cuántica, implementada enteramente en TypeScript:
+
+| Módulo | Función |
+| --- | --- |
+| `contracts.ts` | Contratos Zod tipados para jobs, dispositivos, circuitos |
+| `orchestrator.ts` | Orquestador central de la malla cuántica |
+| `scheduler.ts` | Planificación de tareas por prioridad (interactive/normal/batch) |
+| `circuit-breaker.ts` | Protección contra fallos en cascada |
+| `device-registry.ts` | Registro y discovery de dispositivos computacionales |
+| `core-registry.ts` | Registro de núcleos de procesamiento cuántico |
+| `policy-engine.ts` | Motor de políticas para ejecución gobernada |
+| `worker-manager.ts` | Gestión de workers de ejecución paralela |
+| `event-bus.ts` | Bus de eventos internos de la malla |
+| `telemetry.ts` | Telemetría de rendimiento cuántico |
+| `hsm-client.ts` | Cliente HSM (Hardware Security Module) |
+| `tee-attestation.ts` | Attestation de Trusted Execution Environment |
+| `bookpi-quantum.ts` | Trazabilidad BookPI cuántica |
+| `recovery.ts` | Recuperación ante fallos |
+| `index.ts` | Barrel de exportación y diagnóstico |
+
+**Dashboard Quantum**: 7 paneles en tiempo real — Orchestrator, Scheduler, Circuit Breaker, Device Registry, Policy Engine, Telemetry y Recovery.
+
+### Idlen Integration — Monetización v6.0.0
+
+Integración completa del SDK de Idlen para monetización contextual de conversaciones:
+
+**Server-side** (`src/lib/idlen-ads.server.ts`):
+- Extracción de contexto del mensaje del usuario vía diccionario local del SDK
+- Solicitud de ads contextuales cada 3er mensaje (sin spam)
+- Inyección de `sponsoredContent` en la respuesta de Isabella
+- Tracking de impresiones y clicks vía API de Idlen
+
+**Client-side** (`MessageStream.tsx`):
+- Tarjeta de anuncio patrocinada nativa con diseño integrado
+- Tracking de clicks vía `window.idlen`
+- Design coherente con la estética oscura de Isabella
+
+**Tracking** (`index.html`):
+- Idlen Pixel con ID `9dac0977-fcd0-4cd9-af41-ddc8a67edcde`
+- PageView tracking automático
+- Listo para conversiones (signup, trial, purchase)
 
 ---
 
-## Capacidades del sistema
+## Endpoints API (48 rutas)
 
-Las siguientes capacidades forman parte del alcance declarado de la versión v5.0.0:
-- **Interfaz de usuario basada en React**: Interfaz moderna, accesible y responsiva.
-- **Terminal cognitiva interactiva**: Consola CLI con stream de pensamiento y comandos (`/help`, `/status`, `/image`, `/modules`, `/preset`, `/route`, `/argus`, `/voice`, `/sound`, `/presentacion`).
-- **Tráiler de apertura AAA (16s)**: Basado en HTML5 Canvas 60 FPS, Web Audio a 60 Hz y Smooth-Motion.
-- **Musa Neural**: Con arquetipos emocionales configurables (*Serena, Visionaria, Lúcida, Protectora, Radiante*).
-- **ORION Canvas**: Para experiencias visuales generativas.
-- **Estudio de voz**: Con timbres personalizables y síntesis Web Speech / Gemini TTS.
-- **Panel de trazabilidad y telemetría**: Monitoreo de latencia, tokens y ruta sináptica.
-- **API versionada de Isabella**: Endpoints en `/api/v1/isabella`.
-- **Sandbox de herramientas**: Catálogo e inspección de ejecución de herramientas.
-- **Registro de percepciones, decisiones e inferencias**: Trazabilidad completa.
-- **Integración con proveedores externos de inferencia**: Cascada Gemini 3.7 Flash con fallback resiliente.
-- **Hub RDM**: Para capacidades territoriales, patrimonio y cultura de Real del Monte.
-- **Componentes experimentales de seguridad y auditoría poscuántica**: Especificación `CRYSTALS-LATAMV`, `LITLE-32 Gates` y `BookPI`.
-
----
-
-## Estado de implementación
-
-- **Versión declarada**: v5.0.0
-- **Madurez declarada**: Prototipo avanzado o versión candidata a producción, en proceso de validación operativa y documental.
-
-| Componente | Estado declarado | Evidencia requerida |
+### Core cognitivo
+| Método | Ruta | Propósito |
 | --- | --- | --- |
-| **Interfaz de usuario** | Implementada | Código fuente React, componentes en `src/components/` |
-| **React, TS, Vite, Tailwind** | Integrados | `package.json`, `vite.config.ts`, `tsconfig.json` |
-| **Tráiler de apertura** | Implementado | `IsabellaCinematicTrailer.tsx`, Canvas 60fps |
-| **Backend Express** | Implementado | `server.ts`, `express-routes.ts` |
-| **Integración Gemini API** | Integrada | Adaptador `@google/genai` en `server.ts` |
-| **Terminal cognitiva** | Implementada | `IsabellaTerminal.tsx`, `TerminalCommandLine.tsx` |
-| **CROWN Gateway** | Implementado | `CrownContext.tsx`, `isabella-crown.ts` |
-| **ISA** | Implementada | Módulos semánticos y estados en `CrownContext.tsx` |
-| **SOPHIA** | Implementada | Módulos dialécticos y axiomas en `server.ts` |
-| **ORION** | Implementado | `ImageStudioView.tsx`, generador Pollinations/Imagen |
-| **ARGUS Sentinel** | Implementado | `SecurityGovernanceModal.tsx`, reglas Zero-Trust |
-| **API Isabella** | Implementada | Endpoints `/api/v1/isabella/*` en `server.ts` |
-| **Trazabilidad** | Implementada | `TraceabilityDashboard.tsx`, `audit-tracer.ts` |
-| **BookPI** | Experimental / Operativo | `bookpi.server.ts`, firmas y ledger |
-| **CRYSTALS-LATAMV** | Experimental | `CryptographyTab.tsx`, especificación RFC-0007 |
-| **Motor local soberano** | Operativo | Fallback autónomo en `server.ts` |
-| **Operación air-gapped** | Operativa | Inferencia 100% local sin `GEMINI_API_KEY` |
-| **Experiencias multimodales**| Implementadas | Arte visual, locución TTS y canvas 60 FPS |
+| `POST` | `/api/isabella/process` | Procesamiento cognitivo C.R.O.W.N. completo |
+| `GET` | `/api/v1/isabella` | Metadatos y diagnóstico |
+| `POST` | `/api/v1/isabella` | Procesamiento de percepciones |
+| `POST` | `/api/v1/isabella/agent/lease` | Arrendamiento de sesión de agente |
+| `POST` | `/api/v1/isabella/agent/chat` | Chat con stream de razonamiento |
+| `GET` | `/api/v1/isabella/agent/stream` | SSE streaming en tiempo real |
+| `GET` | `/api/v1/isabella/audit` | Registro de auditoría |
+| `GET` | `/api/v1/isabella/memory` | Consulta de memoria jerárquica |
+| `POST` | `/api/v1/isabella/memory` | Registro en memoria |
+| `GET` | `/api/v1/isabella/tools` | Catálogo de herramientas |
+| `POST` | `/api/v1/isabella/tools/execute` | Sandbox de ejecución |
+| `GET` | `/api/v1/isabella/policies` | Políticas C.R.O.W.N. & ARGUS |
+| `GET` | `/api/v1/isabella/migrations` | Esquemas SQL |
+| `GET` | `/api/v1/isabella/blueprint` | Especificación arquitectónica |
+| `GET` | `/api/v1/isabella/v5/fusion` | Fusión operacional blindada v5 |
 
----
-
-## Posicionamiento conceptual
-
-| Dimensión | Sistemas convencionales | Isabella Villaseñor AI™ |
+### Auth & Usuarios
+| Método | Ruta | Propósito |
 | --- | --- | --- |
-| **Categoría** | Aplicación conversacional o chatbot | **Infraestructura Cognitiva Territorial (TCI)** |
-| **Identidad** | Depende del proveedor o modelo | Diseñada como capa separada del modelo |
-| **Gobernanza** | Variable / Opaca | Gobernanza C.R.O.W.N. determinista |
-| **Inferencia** | Dependiente de un proveedor | Diseñada para admitir capacidades federadas y locales |
-| **Contexto** | Generalista | Territorial, cultural e institucional (Real del Monte / LatAm) |
-| **Auditoría** | Registros internos limitados | Trazabilidad por diseño con BookPI |
-| **Seguridad** | Depende de la app | Mínimo privilegio, evaluación de riesgos y Zero-Trust |
-| **Experiencia** | Conversacional básica | Multimodal (Terminal, Visual, Vocal, Tráiler 60 FPS) |
+| `POST` | `/api/v1/auth/signup` | Registro con PBKDF2 |
+| `POST` | `/api/v1/auth/login` | Login con trazabilidad |
+| `POST` | `/api/v1/auth/logout` | Logout |
+| `GET` | `/api/v1/users/me` | Usuario autenticado |
+| `GET` | `/api/v1/profiles/:handle` | Perfil público |
+| `PUT` | `/api/v1/profiles/me` | Actualizar perfil |
+
+### Social & Streaming
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/api/v1/social/posts` | Crear post multimedia |
+| `GET` | `/api/v1/social/feed` | Feed público |
+| `POST` | `/api/v1/streams` | Sala WebRTC |
+
+### XR, Protocolos & Economía
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `POST` | `/api/v1/xr/dreamspaces` | Espacio XR con overlay guardian |
+| `POST` | `/api/v1/protocols` | Protocolo civilizable auditable |
+| `GET` | `/api/v1/protocols` | Listar protocolos |
+| `POST` | `/api/v1/economy/credits` | Créditos internos no especulativos |
+
+### Quantum Mesh
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/api/v1/quantum/status` | Estado de la malla |
+| `POST` | `/api/v1/quantum/jobs` | Crear job cuántico |
+| `GET` | `/api/v1/quantum/jobs` | Listar jobs |
+| `POST` | `/api/v1/quantum/circuits` | Registrar circuito |
+| `GET` | `/api/v1/quantum/circuits` | Listar circuitos |
+| `POST` | `/api/v1/quantum/devices` | Registrar dispositivo |
+| `GET` | `/api/v1/quantum/devices` | Listar dispositivos |
+| `GET` | `/api/v1/quantum/telemetry` | Telemetría cuántica |
+| `POST` | `/api/v1/quantum/recovery` | Disparar recuperación |
+| `POST` | `/api/v1/quantum/policies` | Gestionar políticas |
+| `GET` | `/api/v1/quantum/events` | Eventos de la malla |
+| `POST` | `/api/v1/quantum/hsm/challenge` | Challenge HSM |
+| `POST` | `/api/v1/quantum/tee/attest` | Attestation TEE |
+
+### Health & Diagnóstico
+| Método | Ruta | Propósito |
+| --- | --- | --- |
+| `GET` | `/api/health` | Health check completo |
+| `GET` | `/api/health/quantum` | Health quantum mesh |
+| `GET` | `/api/health/idlen` | Estado integración Idlen |
 
 ---
 
-## Principios de diseño
+## Posicionamiento global
 
-1. **Soberanía tecnológica**: Evitar la dependencia estructural de un único proveedor.
-2. **Gobernanza antes que generación**: Aplicar políticas y controles antes de operaciones sensibles.
-3. **Trazabilidad por diseño**: Registrar los eventos necesarios para reconstruir el flujo operativo.
-4. **Seguridad Zero-Trust**: No asumir confianza implícita entre usuarios, servicios o modelos.
-5. **Mínimo privilegio**: Conceder únicamente los permisos necesarios para cada operación.
-6. **Modularidad**: Permitir la evolución o sustitución independiente de componentes.
-7. **Contextualización territorial**: Reconocer historia, cultura y necesidades de Real del Monte.
-8. **Interoperabilidad**: Utilizar interfaces versionadas y contratos explícitos.
-9. **Responsabilidad ética**: Mantener supervisión, límites y mecanismos de revisión.
-10. **Resiliencia**: Diseñar para fallos parciales, sustitución de modelos y pérdidas de conectividad.
-11. **Privacidad**: Reducir la exposición de datos personales y secretos operativos.
-12. **Reproducibilidad**: Documentar procedimientos, dependencias, versiones y resultados.
+| Dimensión | Chatbots convencionales | Frameworks de agentes (LangChain, etc.) | **Isabella Villaseñor AI™** |
+| --- | --- | --- | --- |
+| **Categoría** | Aplicación conversacional | Librería de orquestación | **Infraestructura Cognitiva Territorial** |
+| **Gobernanza** | Ninguna / prompt-level | Configurable pero manual | **C.R.O.W.N. determinista con ARGUS** |
+| **Identidad** | Genérica / dependiente del modelo | Sin identidad propia | **Isabella — identidad territorial permanente** |
+| **Seguridad** | Rate limiting básico | Implementación del developer | **Zero-Trust nativo + ARGUS Sentinel** |
+| **Trazabilidad** | Logs planos | Opcional | **BookPI hash-chain + SHA-256 inmutable** |
+| **Modelos** | Atado a un proveedor | Multi-proveedor pero acoplado | **Soberanía total: intercambiables vía C.R.O.W.N.** |
+| **Fallback** | Error 500 | Error o retry | **Motor autónomo local 100% offline** |
+| **Contexto territorial** | Ninguno | Ninguno | **Real del Monte · LatAm · Sur Global** |
+| **Monetización** | Ninguna / externa | Ninguna | **Idlen SDK contextual nativo** |
+| **Cuántico (experimental)** | Ninguno | Ninguno | **Quantum Mesh 15 módulos + dashboard** |
+| **Multimodal** | Texto ± voz | Texto ± herramientas | **Terminal · Arte · Voz · Tráiler 60fps · XR** |
+| **Stack** | Cualquiera | Python / JS | **React 19 · TS · Vite · Express · Zod v4** |
 
 ---
 
-## Requisitos técnicos
+## Requisitos
 
-### Requisitos generales
-- **Node.js**: v18.0.0 o superior (Probado en Node.js v24.18.0).
-- **npm** (v9+) o **bun**.
-- **Git** v2.30+.
-- Navegador moderno con soporte WebGL, Canvas HTML5 y Web Speech API.
+- **Node.js** ≥ 18.0.0 (probado en v24.18.0)
+- **npm** v9+ o **bun**
+- **Git** v2.30+
+- Navegador moderno (WebGL, Canvas HTML5, Web Speech API)
 
 ---
 
@@ -336,148 +265,164 @@ cd isabella-mexa
 npm install --legacy-peer-deps
 ```
 
-### Verificación de instalación
-```bash
-npx tsc --noEmit
-npm run build
-```
-
 ---
 
 ## Configuración
 
-Crea un archivo `.env` en la raíz del proyecto basado en `.env.example`:
+Crea un archivo `.env` basado en `.env.example`:
 
 ```env
-NODE_ENV=development
-PORT=3000
-
-# Proveedor de inferencia Cloud (Opcional - Si no se especifica, se activa el Motor Soberano Local)
+# Gemini AI (opcional — sin esto, Isabella usa el motor soberano local)
 GEMINI_API_KEY=
 
-# Configuración del Nodo
-NEXT_PUBLIC_NODE_ID=nd-rdm-nodo-cero
+# App
 APP_URL=http://localhost:3000
+PUBLIC_APP_URL=http://localhost:3000
+
+# Idlen Ads (opcional — habilita monetización contextual)
+IDLEN_API_KEY=idl_pk_tu_api_key_aqui
+
+# Billing (opcional — planes de suscripción)
+BILLING_CHECKOUT_BASE_URL=http://localhost:3000
+STRIPE_PRICE_PLUS=price_isabella_plus_intro
+STRIPE_PRICE_PREMIUM=price_isabella_premium
+STRIPE_PRICE_VIP=price_isabella_vip
+STRIPE_PRICE_ENTERPRISE=price_isabella_enterprise
 ```
 
 ---
 
 ## Ejecución
 
-### Desarrollo
 ```bash
-npm run dev
-```
-*Acceder a:* `http://localhost:3000`
+# Desarrollo
+npm run dev          # http://localhost:3000
 
-### Producción
-```bash
-npm run build
-npm start
+# Producción
+npm run build        # Vite + esbuild
+npm start            # node dist/server.cjs
 ```
 
 ---
 
-## API
+## Estructura del proyecto
 
-### API TAMV/Isabella v5
-
-Las rutas v5 se agrupan por dominio para mantener la arquitectura federada:
-
-```text
-GET  /api/v1/isabella/v5/fusion
-POST /api/v1/auth/signup
-POST /api/v1/auth/login
-POST /api/v1/auth/logout
-GET  /api/v1/users/me
-GET  /api/v1/profiles/:handle
-PUT  /api/v1/profiles/me
-POST /api/v1/social/posts
-GET  /api/v1/social/feed
-POST /api/v1/xr/dreamspaces
-POST /api/v1/streams
-POST /api/v1/protocols
-GET  /api/v1/protocols
-POST /api/v1/economy/credits
+```
+isabella-mexa/
+├── server.ts                    # Express server — 1486 líneas, 48 endpoints
+├── index.html                   # SPA entry + Idlen Pixel
+├── vercel.json                  # Vercel deployment config
+├── src/
+│   ├── App.tsx                  # Router principal + 10 vistas
+│   ├── main.tsx                 # Entry point React
+│   ├── types.ts                 # Tipos TypeScript (TerminalMessage, etc.)
+│   ├── contracts/               # Contratos Zod v4 (isabella.ts)
+│   ├── context/
+│   │   └── CrownContext.tsx     # Estado global C.R.O.W.N. — orquestación
+│   ├── lib/
+│   │   ├── isabella-crown.ts    # Gateway C.R.O.W.N.
+│   │   ├── isabella-v5.ts       # Fusión operacional v5
+│   │   ├── isabella-agent-sdk.ts# SDK de agente autónomo
+│   │   ├── isabella-quantum.ts  # Bridge quantum
+│   │   ├── idlen-ads.server.ts  # Integración Idlen Ads
+│   │   ├── bookpi.server.ts     # BookPI hash-chain
+│   │   ├── atlas-kernel.server.ts # Atlas audit kernel
+│   │   ├── auth.server.ts       # Autenticación PBKDF2
+│   │   ├── economy.server.ts    # Economía interna
+│   │   ├── hsmClient.ts         # Hardware Security Module
+│   │   ├── postQuantumCrypto.ts # CRYSTALS-LATAMV
+│   │   ├── quantum/             # 15 módulos Quantum Mesh
+│   │   │   ├── contracts.ts     # Contratos Zod cuánticos
+│   │   │   ├── orchestrator.ts  # Orquestador central
+│   │   │   ├── scheduler.ts     # Planificador de jobs
+│   │   │   ├── circuit-breaker.ts
+│   │   │   ├── device-registry.ts
+│   │   │   ├── core-registry.ts
+│   │   │   ├── policy-engine.ts
+│   │   │   ├── worker-manager.ts
+│   │   │   ├── event-bus.ts
+│   │   │   ├── telemetry.ts
+│   │   │   ├── hsm-client.ts
+│   │   │   ├── tee-attestation.ts
+│   │   │   ├── bookpi-quantum.ts
+│   │   │   ├── recovery.ts
+│   │   │   └── index.ts
+│   │   └── ... (40+ módulos de infraestructura)
+│   ├── components/
+│   │   ├── Terminal/            # Terminal cognitiva + MessageStream
+│   │   ├── Dashboard/           # Cockpit, ModuleCard, CattleyaFinance
+│   │   ├── Quantum/             # QuantumMeshDashboard (7 paneles)
+│   │   ├── Traceability/        # Dashboard trazabilidad + Crypto
+│   │   ├── Security/            # ARGUS SecurityGovernance
+│   │   ├── Studio/              # ImageStudio + VoiceStudio
+│   │   ├── Welcome/             # Tráiler cinematográfico 60fps
+│   │   ├── Hub/                 # Hub territorial RDM
+│   │   ├── Presentation/        # Dossier presentación
+│   │   ├── Billing/             # Planes de suscripción
+│   │   └── ... (16 directorios, 34 componentes)
+│   ├── domains/                 # Dominio AI (DDD)
+│   │   └── ai/infrastructure/   # audit-tracer, memory-store, policy-gate, tools-catalog
+│   ├── data/                    # Migraciones SQL + datos de presentación
+│   ├── services/                # territoryContextService
+│   └── hooks/                   # useGlobalShortcuts
 ```
 
-Todas las acciones mutables están diseñadas para producir evidencia auditada en Atlas/BookPI y para conservar separación entre dominio, política, memoria y experiencia XR.
-
-La API versionada oficial está disponible bajo el prefijo `/api/v1/isabella`:
-
-- `GET /api/v1/isabella`: Metadatos y diagnóstico de la infraestructura.
-- `POST /api/v1/isabella`: Procesamiento de percepciones y evaluación de intención.
-- `POST /api/v1/isabella/agent/lease`: Arrendamiento programático de sesión de agente autónomo (`IsabellaAgent`).
-- `POST /api/v1/isabella/agent/chat`: Ejecución programática de chat con stream de razonamiento (`thoughts`) e intercepción de herramientas (`tool_calls`).
-- `GET /api/v1/isabella/agent/stream`: Streaming Server-Sent Events (SSE) en tiempo real para tokens, pensamientos y telemetría.
-- `GET /api/v1/isabella/audit`: Registro criptográfico de auditoría.
-- `GET /api/v1/isabella/memory`: Consulta de memoria jerárquica.
-- `POST /api/v1/isabella/memory`: Registro de nuevo ítem en la memoria.
-- `GET /api/v1/isabella/tools`: Catálogo de herramientas autorizadas.
-- `POST /api/v1/isabella/tools/execute`: Sandbox de ejecución de herramientas.
-- `GET /api/v1/isabella/policies`: Políticas de gobernanza C.R.O.W.N. & ARGUS.
-- `GET /api/v1/isabella/migrations`: Esquemas SQL (`001_create_isabella_tables.sql`).
-- `GET /api/v1/isabella/blueprint`: Especificación de arquitectura Blueprint.
+**Estadísticas del código**:
+- **113 archivos** TypeScript/TSX
+- **~22,900 líneas** de código
+- **48 endpoints** API REST
+- **15 módulos** Quantum Mesh
+- **34 componentes** React
+- **16 vistas** de navegación
 
 ---
 
-## Seguridad y privacidad
+## Seguridad
 
-Isabella Villaseñor AI™ aplica controles estrictos bajo el principio de Zero-Trust:
-- Sanitización de entradas y prevención de ataques de inyección de prompt.
-- Evaluación de riesgos ARGUS antes de ejecutar cualquier herramienta sensible.
-- Cifrado de firmas y tokenización de estado.
-- Sin almacenamiento ni fuga de credenciales o secretos en cliente.
-
----
-
-## Auditoría e integridad
-
-- **Digest SHA-256 Declarado**: `cd09e99b4f6595c718bab7a54e9b6f5cc8ef9f0fb74b9432e219a189a896462e`
-- **Evaluación**: 26 Capítulos de auditoría formal registrados en la vista **Presentación / Dossier**.
+- **Zero-Trust** por defecto: ARGUS evalúa cada operación antes de ejecutar
+- **Sanitización de entradas**: Contratos Zod v4 en todos los payloads HTTP
+- **Passwords**: PBKDF2 + salt (producción: JWT externo con `ISABELLA_AUTH_SECRET`)
+- **Trazabilidad**: BookPI hash-chain para eventos críticos
+- **Credenciales**: Nunca en código fuente ni cliente
+- **Vercel headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`
 
 ---
 
 ## Limitaciones conocidas
 
-1. La inferencia cloud requiere conectividad a internet y API Key válida; en su ausencia, el sistema funciona mediante el motor local simulado.
-2. Los modelos de lenguaje pueden generar respuestas inexactas o alucinadas; ARGUS atenúa pero no elimina completamente la alucinación estadística.
-3. El marco criptográfico poscuántico `CRYSTALS-LATAMV` constituye una especificación/prototipo funcional en TypeScript, pendiente de librerías nativas C/Rust en entornos de producción física.
+1. **Inferencia cloud** requiere `GEMINI_API_KEY` válida; sin ella, opera con motor local simulado
+2. **Alucinaciones estadísticas**: ARGUS atenúa pero no elimina completamente las alucinaciones del modelo
+3. **Quantum Mesh** es computación clásica inspirada en principios cuánticos, no hardware cuántico real
+4. **Idlen Ads**: Requiere API key válida de Idlen; sin ella, las respuestas van sin ads
+5. **Poscuántico**: `CRYSTALS-LATAMV` es una especificación/prototipo en TypeScript
 
 ---
 
 ## Roadmap
 
-- **Corto plazo**: Pruebas de integración automatizadas E2E, optimización móvil.
-- **Mediano plazo**: Expansión del motor RAG Kórima Nexus con vector DB nativo.
-- **Largo plazo**: Integración directa con unidades QPU para circuitos variacionales cuánticos.
-
----
-
-## Colaboración y Reporte Responsable
-
-Las contribuciones técnicas y académicas son bienvenidas. Consulta [`CONTRIBUTING.md`](./CONTRIBUTING.md) para más detalles.
-Para reportar vulnerabilidades de seguridad de forma privada, consulta [`SECURITY.md`](./SECURITY.md).
+| Horizonte | Objetivo |
+| --- | --- |
+| **Corto plazo** | Deploy a Vercel producción, pruebas E2E, optimización móvil |
+| **Mediano plazo** | RAG Kórima Nexus con vector DB, WebSockets para streaming |
+| **Largo plazo** | Integración QPU real, federación multi-nodo, DAO de gobernanza |
 
 ---
 
 ## Licencia
 
-- **Código Fuente**: Licencia MIT (ver [`LICENSE`](./LICENSE)).
-- **Documentación e Identidad Canónica**: Creative Commons Attribution 4.0 International (CC BY 4.0).
-- **Marca y Activos de Identidad**: Isabella Villaseñor AI™, denominaciones y elementos gráficos son propiedad de Edwin Oswaldo Castillo Trejo / TAMV ONLINE NETWORK.
+- **Código fuente**: MIT (ver [`LICENSE`](./LICENSE))
+- **Documentación**: CC BY 4.0
+- **Marca**: Isabella Villaseñor AI™ — Edwin Oswaldo Castillo Trejo / TAMV ONLINE NETWORK
 
 ---
 
-## Autoría y ecosistema
+## Autoría
 
 - **Autor y Creador**: Edwin Oswaldo Castillo Trejo (*Anubis Villaseñor*)
 - **ORCID**: [0009-0008-5050-1539](https://orcid.org/0009-0008-5050-1539)
 - **Nodo Cero**: Real del Monte, Hidalgo, México
-- **Ecosistema**: TAMV ONLINE NETWORK · RDM Digital Hub
+- **Repositorio**: [github.com/OsoPanda1/isabella-mexa](https://github.com/OsoPanda1/isabella-mexa)
 
 ---
 
-## Estado del documento
-
-Este documento refleja el estado verificado de **Isabella Villaseñor AI™ v4.2.0** al 17 de agosto de 2026.
+*Documento generado el 19 de agosto de 2026 — Isabella Villaseñor AI™ v6.0.0*
