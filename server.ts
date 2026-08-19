@@ -12,7 +12,6 @@ import { IsabellaPerception } from "./src/contracts/isabella";
 import { atlasRouter } from "./src/lib/express-routes";
 import { signLedgerBlockPQC, generateMLKEMKeyPair, encapsulateMLKEM } from "./src/lib/postQuantumCrypto";
 import { authenticate, requireRole, requireScope, currentPrincipal } from "./src/lib/auth.server";
-import { QuantumBridgeRequestSchema, quantumGuard, runQuantumBridge } from "./src/lib/quantum-bridge.server";
 import {
   ISABELLA_PLANS,
   buildCheckoutUrl,

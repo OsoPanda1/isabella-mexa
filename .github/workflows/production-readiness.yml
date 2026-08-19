@@ -27,8 +27,6 @@ jobs:
         run: npm run lint
       - name: Build
         run: npm run build
-      - name: Quantum bridge fallback diagnose
-        run: npm run quantum:diagnose
       - name: Dependency audit
         run: npm audit --audit-level=high
       - name: Generate SBOM
