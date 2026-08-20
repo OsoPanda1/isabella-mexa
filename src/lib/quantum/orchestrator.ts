@@ -332,7 +332,7 @@ async function executeProviderLocal(
         ? Math.cos(numQubits * 0.1) * 0.95 + 0.05
         : undefined,
       samples: !isAnalytic && request.shots
-        ? Array.from({ length: request.shots }, () => Math.random() > 0.5 ? 1 : 0)
+        ? Array.from({ length: Math.min(request.shots, 10000) }, () => Math.random() > 0.5 ? 1 : 0)
         : undefined,
       circuitDepth: numQubits + 1,
       fidelity: 0.999 + Math.random() * 0.001,

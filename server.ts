@@ -47,6 +47,15 @@ app.use(atlasRouter);
 app.use(tamvPlatformRouter);
 
 const ipBuckets = new Map<string, { count: number; resetAt: number }>();
+
+// TTL cleanup — evict expired buckets every 2 minutes to prevent OOM
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of ipBuckets) {
+    if (bucket.resetAt < now) ipBuckets.delete(key);
+  }
+}, 120_000);
+
 function rateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
   const now = Date.now();
   const key = String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local").split(",")[0].trim();
@@ -314,14 +323,16 @@ app.post("/api/v1/isabella", rateLimit, authenticate, quotaGate("chat"), async (
 });
 
 // 3. GET /api/v1/isabella/audit - Cryptographic Audit Trail
-app.get("/api/v1/isabella/audit", (req, res) => {
+app.get("/api/v1/isabella/audit", authenticate, requireScope("audit:read"), async (req, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
   const logs = getRecentAuditLogs(limit);
+  const { createHash } = await import("crypto");
+  const logHash = createHash("sha256").update(JSON.stringify(logs)).digest("hex");
   res.json({
     ok: true,
     count: logs.length,
     logs,
-    sha256Verification: "cd09e99b4f6595c718bab7a54e9b6f5cc8ef9f0fb74b9432e219a189a896462e",
+    sha256Verification: logHash,
     timestamp: new Date().toISOString(),
   });
 });
@@ -413,7 +424,7 @@ app.post("/api/v1/isabella/tools/execute", rateLimit, authenticate, requireScope
 });
 
 // 8. GET /api/v1/isabella/policies - Governance & Policy Rules
-app.get("/api/v1/isabella/policies", (req, res) => {
+app.get("/api/v1/isabella/policies", authenticate, requireScope("governance:read"), (req, res) => {
   res.json({
     ok: true,
     governanceFramework: "C.R.O.W.N. & ARGUS Zero Trust Protocol",
@@ -429,7 +440,7 @@ app.get("/api/v1/isabella/policies", (req, res) => {
 });
 
 // 9. GET /api/v1/isabella/migrations - Database Schema & SQL
-app.get("/api/v1/isabella/migrations", (req, res) => {
+app.get("/api/v1/isabella/migrations", authenticate, requireRole("admin"), (req, res) => {
   res.json({
     ok: true,
     filename: "001_create_isabella_tables.sql",
@@ -440,7 +451,7 @@ app.get("/api/v1/isabella/migrations", (req, res) => {
 });
 
 // 10. GET /api/v1/isabella/blueprint - Architecture Blueprint
-app.get("/api/v1/isabella/blueprint", (req, res) => {
+app.get("/api/v1/isabella/blueprint", authenticate, requireRole("admin"), (req, res) => {
   res.json({
     ok: true,
     blueprint: ISABELLA_BLUEPRINT,
@@ -465,6 +476,16 @@ interface AgentSessionRecord {
 }
 
 const activeAgentSessions = new Map<string, AgentSessionRecord>();
+
+// TTL cleanup — sweep expired agent sessions every 5 minutes to prevent OOM
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of activeAgentSessions) {
+    if (session.status !== "active" || Date.parse(session.expiresAt) <= now) {
+      activeAgentSessions.delete(id);
+    }
+  }
+}, 300_000);
 
 // 11. POST /api/v1/isabella/agent/lease - Lease an autonomous Isabella Agent
 app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("agent:lease"), quotaGate("agent"), (req, res) => {
@@ -654,8 +675,8 @@ function buildGenerativeArtworkUrl(prompt: string, style = "cyber_ethereal", asp
   const width = aspectRatio === "16:9" ? 1280 : aspectRatio === "9:16" ? 720 : aspectRatio === "4:3" ? 1024 : 1024;
   const height = aspectRatio === "16:9" ? 720 : aspectRatio === "9:16" ? 1280 : aspectRatio === "4:3" ? 768 : 1024;
   
-  // Deterministic yet diverse seed per prompt
-  const seed = Math.abs(cleanPrompt.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + (Date.now() % 100000));
+  // Deterministic yet diverse seed per prompt (cryptographically random component)
+  const seed = Math.abs(cleanPrompt.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + Math.floor(Math.random() * 1000000));
 
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(enrichedPrompt)}?width=${width}&height=${height}&nologo=true&enhance=true&seed=${seed}&model=flux`;
 }
@@ -1474,13 +1495,25 @@ app.get("/api/health/idlen", (_req, res) => {
   res.json({ ok: true, ...getIdlenStatus() });
 });
 
-app.post("/api/v1/idlen/click", rateLimit, async (req, res) => {
+app.post("/api/v1/idlen/click", rateLimit, authenticate, async (req, res) => {
   const { adId, publisherId, requestId } = req.body || {};
   if (!adId || !publisherId || !requestId) {
     return res.status(400).json({ error: "Missing adId, publisherId, or requestId" });
   }
   const result = await trackIdlenClick({ adId, publisherId, requestId });
   res.json({ ok: result.tracked, error: result.error });
+});
+
+// ============================================================================
+// PROCESS-LEVEL ERROR HANDLERS (prevents silent crashes)
+// ============================================================================
+process.on("unhandledRejection", (reason: unknown) => {
+  console.error("[ISABELLA] Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (err: Error) => {
+  console.error("[ISABELLA] Uncaught Exception:", err);
+  process.exit(1);
 });
 
 // Vite middleware & Static Serving

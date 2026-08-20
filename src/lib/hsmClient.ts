@@ -78,8 +78,12 @@ class HSMClient {
   private startHealthChecks(): void {
     if (this.healthCheckInterval) return;
     this.healthCheckInterval = setInterval(async () => {
-      await Promise.all([this.performHealthCheck("primary"), this.performHealthCheck("backup")]);
-      await this.evaluateFailover();
+      try {
+        await Promise.all([this.performHealthCheck("primary"), this.performHealthCheck("backup")]);
+        await this.evaluateFailover();
+      } catch (err) {
+        console.error("[HSM] Health check interval error:", err);
+      }
     }, this.devices.get("primary")!.healthCheckIntervalMs);
   }
 

@@ -68,7 +68,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     req.principal = principal;
     return next();
   }
-  if (process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_AUTH_FALLBACK !== "false") {
+  if (process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_AUTH_FALLBACK === "true") {
     req.principal = { sub: "dev-local", tenantId: "nodo-cero-rdm", roles: ["admin"], scopes: ["*"] };
     return next();
   }

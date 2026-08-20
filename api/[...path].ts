@@ -78,11 +78,27 @@ function applySecurityHeaders(res: VercelResponse): void {
 }
 
 // ─────────────────────────────────────────────────────────────
+// CORS WHITELIST (from rdm-digital-hub CANONICAL_ORIGINS pattern)
+// ─────────────────────────────────────────────────────────────
+const CANONICAL_ORIGINS = (process.env.CANONICAL_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+function getAllowedOrigin(req: VercelRequest): string {
+  const origin = req.headers.origin || "";
+  if (CANONICAL_ORIGINS.length > 0) {
+    return CANONICAL_ORIGINS.includes(origin) ? origin : CANONICAL_ORIGINS[0];
+  }
+  return origin || "*";
+}
+
+// ─────────────────────────────────────────────────────────────
 // MIDDLEWARE: CORS PREFLIGHT
 // ─────────────────────────────────────────────────────────────
 function applyCORSMiddleware(req: VercelRequest, res: VercelResponse): boolean {
   if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Origin", getAllowedOrigin(req));
     res.setHeader(
       "Access-Control-Allow-Methods",
       "GET, POST, PUT, DELETE, PATCH, OPTIONS"
@@ -91,14 +107,16 @@ function applyCORSMiddleware(req: VercelRequest, res: VercelResponse): boolean {
       "Access-Control-Allow-Headers",
       "Content-Type, Authorization, X-Trace-ID, X-LITLE-Signature, X-PQC-Token"
     );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Max-Age", "86400");
     res.status(204).end();
     return true;
   }
 
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", getAllowedOrigin(req));
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Trace-ID");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
   return false;
 }
 
@@ -170,6 +188,11 @@ async function handleRequest(
 ): Promise<void> {
   try {
     await new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const settleOnce = (fn: () => void) => {
+        if (!settled) { settled = true; fn(); }
+      };
+
       appHandler(req, res, (err: unknown) => {
         if (err) return reject(err);
         resolve();
@@ -181,10 +204,10 @@ async function handleRequest(
         } else {
           recordSuccess();
         }
-        resolve();
+        settleOnce(() => resolve());
       });
 
-      res.on("error", reject);
+      res.on("error", (err) => reject(err));
     });
 
     const duration = (performance.now() - context.startTime).toFixed(2);

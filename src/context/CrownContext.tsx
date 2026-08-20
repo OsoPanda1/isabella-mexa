@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from "react";
 import {
   CognitiveModule,
   CognitiveModuleId,
@@ -346,6 +346,9 @@ export const CrownProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
   const [lastInferenceTransition, setLastInferenceTransition] = useState<InferenceTransitionEvent | null>(null);
 
+  // Ref to avoid stale closure in startListening
+  const sendMessageRef = useRef<((content: string) => Promise<void>) | null>(null);
+
   // Stable sessionId for Idlen attribution — persists across the browser session
   const [sessionId] = useState<string>(() => {
     try {
@@ -664,7 +667,7 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
         const transcript = event.results[0][0].transcript;
         if (transcript) {
           soundManager.playBeep(950, 0.04);
-          sendMessage(transcript);
+          sendMessageRef.current?.(transcript);
         }
       };
 
@@ -876,6 +879,9 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
     },
     [isProcessing, messages, activePreset, modules, speakText, voiceSettings.autoSpeak, generateImage]
   );
+
+  // Keep ref fresh for stable closure in startListening
+  sendMessageRef.current = sendMessage;
 
   // Set Preset Profile
   const setPreset = useCallback(
@@ -1260,7 +1266,7 @@ Abriendo consola operativa /api/v1/isabella:
     });
   }, []);
 
-  const value: CrownContextValue = {
+  const value: CrownContextValue = useMemo(() => ({
     state: {
       isProcessing,
       activePreset,
@@ -1322,7 +1328,20 @@ Abriendo consola operativa /api/v1/isabella:
     isSecurityModalOpen,
     openSecurityModal,
     closeSecurityModal,
-  };
+  }), [
+    isProcessing, activePreset, modules, activePulse, soundEnabled, speechSynthesisEnabled,
+    isSpeaking, isListening, activeView, totalTokens, uptime, lastRoutingEvent, voiceSettings,
+    isabellaMood, activeHead, inferenceMode, securityGovernance, lastInferenceTransition,
+    messages, gallery, availableVoices, sendMessage, generateImage, executeCommand,
+    clearMessages, setPreset, updateModuleParameter, toggleSound, toggleSpeechSynthesis,
+    setActiveView, activeModuleId, routingHistory, speakText, stopSpeech, startListening,
+    stopListening, triggerManualDiagnostic, updateVoiceSettings, setMood,
+    isWelcomeOpen, openWelcomeModal, closeWelcomeModal, isTrailerOpen, openTrailer,
+    closeTrailer, isShortcutsOpen, openShortcutsModal, closeShortcutsModal,
+    lastShortcutTriggered, triggerShortcutFeedback, clearShortcutFeedback,
+    toggleInferenceMode, setInferenceMode, dismissInferenceNotification,
+    isSecurityModalOpen, openSecurityModal, closeSecurityModal,
+  ]);
 
   return <CrownContext.Provider value={value}>{children}</CrownContext.Provider>;
 };
