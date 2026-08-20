@@ -6,10 +6,23 @@
 
 import { createHash } from "node:crypto";
 import { IsabellaAuditLog } from "../../../contracts/isabella";
+import { getDatabase } from "../../../lib/persistence/sqlite";
 
-// In-memory persistent buffer for high-speed audit tracing & export
 const auditBuffer: IsabellaAuditLog[] = [];
 const MAX_BUFFER_SIZE = 1000;
+
+let sqliteAvailable: boolean | null = null;
+
+function isSqliteAvailable(): boolean {
+  if (sqliteAvailable !== null) return sqliteAvailable;
+  try {
+    getDatabase();
+    sqliteAvailable = true;
+  } catch {
+    sqliteAvailable = false;
+  }
+  return sqliteAvailable;
+}
 
 export interface AuditTraceParams {
   tenantId?: string;
@@ -43,12 +56,30 @@ export async function auditTrace(payload: AuditTraceParams): Promise<{
     createdAt: now,
   };
 
-  auditBuffer.unshift(entry);
-  if (auditBuffer.length > MAX_BUFFER_SIZE) {
-    auditBuffer.pop();
+  if (isSqliteAvailable()) {
+    try {
+      const db = getDatabase();
+      db.prepare(
+        `INSERT INTO audit_logs (id, tenantId, sessionId, actorId, eventType, payload, traceId, checksum, createdAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        entry.id,
+        entry.tenantId ?? null,
+        entry.sessionId ?? null,
+        entry.actorId ?? null,
+        entry.eventType,
+        JSON.stringify(entry.payload),
+        entry.traceId,
+        entry.checksum ?? null,
+        entry.createdAt
+      );
+    } catch {
+      insertIntoBuffer(entry);
+    }
+  } else {
+    insertIntoBuffer(entry);
   }
 
-  // Console output structured for telemetry observers
   if (typeof console !== "undefined") {
     console.log(`[Isabella.Audit::${entry.eventType}]`, {
       auditId,
@@ -62,9 +93,57 @@ export async function auditTrace(payload: AuditTraceParams): Promise<{
 }
 
 export function getRecentAuditLogs(limit = 50): IsabellaAuditLog[] {
+  if (isSqliteAvailable()) {
+    try {
+      const db = getDatabase();
+      const rows = db.prepare(
+        `SELECT id, tenantId, sessionId, actorId, eventType, payload, traceId, checksum, createdAt
+         FROM audit_logs ORDER BY createdAt DESC LIMIT ?`
+      ).all(limit) as Array<{
+        id: string;
+        tenantId: string | null;
+        sessionId: string | null;
+        actorId: string | null;
+        eventType: string;
+        payload: string;
+        traceId: string;
+        checksum: string | null;
+        createdAt: string;
+      }>;
+      return rows.map((row) => ({
+        id: row.id,
+        tenantId: row.tenantId ?? undefined,
+        sessionId: row.sessionId ?? undefined,
+        actorId: row.actorId ?? undefined,
+        eventType: row.eventType,
+        payload: JSON.parse(row.payload) as Record<string, unknown>,
+        traceId: row.traceId,
+        checksum: row.checksum ?? undefined,
+        createdAt: row.createdAt,
+      }));
+    } catch {
+      return [...auditBuffer.slice(0, limit)];
+    }
+  }
   return [...auditBuffer.slice(0, limit)];
 }
 
 export function clearAuditLogs(): void {
-  auditBuffer.length = 0;
+  if (isSqliteAvailable()) {
+    try {
+      const db = getDatabase();
+      db.prepare(`DELETE FROM audit_logs`).run();
+    } catch {
+      auditBuffer.length = 0;
+    }
+  } else {
+    auditBuffer.length = 0;
+  }
+}
+
+function insertIntoBuffer(entry: IsabellaAuditLog): void {
+  auditBuffer.unshift(entry);
+  if (auditBuffer.length > MAX_BUFFER_SIZE) {
+    auditBuffer.pop();
+  }
 }

@@ -1,23 +1,38 @@
 /**
- * Isabella Quantum Mesh — Quantum Event Bus
+ * Isabella Quantum Mesh — Quantum Event Bus (SQLite-backed)
  * Eventos tipados con trazabilidad completa entre los 24 núcleos.
- * Cada evento incluye traceId, requestId, tenantId, policyVersion, schemaVersion.
+ * Persiste en SQLite. Fallback a in-memory si better-sqlite3 no está disponible.
  */
 import { randomUUID, createHash } from "node:crypto";
 import type { IsabellaEvent, QuantumEventType } from "./contracts";
+import { getDatabase } from "../persistence/sqlite";
 
 type EventHandler<T = unknown> = (event: IsabellaEvent<T>) => void | Promise<void>;
 
 const handlers = new Map<string, Set<EventHandler>>();
-const eventLog: IsabellaEvent[] = [];
-const MAX_LOG_SIZE = 5_000;
-
-// Previous event hash for chain integrity
 let lastEventHash: string = createHash("sha256").update("genesis").digest("hex");
 
-/**
- * Emite un evento cuántico en el bus.
- */
+const fallbackLog: IsabellaEvent[] = [];
+const MAX_LOG_SIZE = 5_000;
+let useSqlite: boolean | null = null;
+
+function isSqlite(): boolean {
+  if (useSqlite !== null) return useSqlite;
+  try { getDatabase(); useSqlite = true; } catch { useSqlite = false; }
+  return useSqlite;
+}
+
+function loadLastHash(): void {
+  if (!isSqlite()) return;
+  try {
+    const db = getDatabase();
+    const row = db.prepare("SELECT payloadHash FROM quantum_events ORDER BY rowid DESC LIMIT 1").get() as { payloadHash: string } | undefined;
+    if (row) lastEventHash = row.payloadHash;
+  } catch { /* ignore */ }
+}
+
+let hashLoaded = false;
+
 export function emitQuantumEvent<T = unknown>(
   eventType: QuantumEventType,
   data: T,
@@ -31,6 +46,8 @@ export function emitQuantumEvent<T = unknown>(
     policyVersion?: string;
   },
 ): IsabellaEvent<T> {
+  if (!hashLoaded) { loadLastHash(); hashLoaded = true; }
+
   const payloadStr = JSON.stringify(data);
   const payloadHash = createHash("sha256").update(payloadStr).digest("hex");
 
@@ -55,65 +72,87 @@ export function emitQuantumEvent<T = unknown>(
     .update(`${lastEventHash}:${event.eventId}:${payloadHash}`)
     .digest("hex");
 
-  eventLog.push(event as IsabellaEvent);
-  if (eventLog.length > MAX_LOG_SIZE) {
-    eventLog.splice(0, eventLog.length - MAX_LOG_SIZE);
+  if (isSqlite()) {
+    try {
+      const db = getDatabase();
+      db.prepare(
+        `INSERT INTO quantum_events (eventId, eventType, schemaVersion, traceId, requestId, tenantId, subjectId, originCore, targetCore, occurredAt, policyVersion, payloadHash, previousEventHash, data)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        event.eventId, event.eventType, event.schemaVersion, event.traceId,
+        event.requestId, event.tenantId, event.subjectId, event.originCore,
+        event.targetCore ?? null, event.occurredAt, event.policyVersion,
+        event.payloadHash, event.previousEventHash ?? null, JSON.stringify(data),
+      );
+    } catch { /* fall through */ }
+  } else {
+    fallbackLog.push(event as IsabellaEvent);
+    if (fallbackLog.length > MAX_LOG_SIZE) fallbackLog.splice(0, fallbackLog.length - MAX_LOG_SIZE);
   }
 
-  // Dispatch to registered handlers
   const eventHandlers = handlers.get(eventType);
   if (eventHandlers) {
     for (const h of eventHandlers) {
-      try {
-        h(event as IsabellaEvent);
-      } catch {
-        // handler errors are logged but don't break the bus
-      }
+      try { h(event as IsabellaEvent); } catch { /* handler errors logged but don't break bus */ }
     }
   }
 
   return event;
 }
 
-/**
- * Registra un handler para un tipo de evento.
- */
 export function onQuantumEvent(eventType: string, handler: EventHandler): () => void {
-  if (!handlers.has(eventType)) {
-    handlers.set(eventType, new Set());
-  }
+  if (!handlers.has(eventType)) handlers.set(eventType, new Set());
   handlers.get(eventType)!.add(handler);
   return () => handlers.get(eventType)?.delete(handler);
 }
 
-/**
- * Obtiene el log de eventos recientes.
- */
 export function getEventLog(limit: number = 100): IsabellaEvent[] {
-  return eventLog.slice(-limit);
+  if (isSqlite()) {
+    try {
+      const db = getDatabase();
+      const rows = db.prepare(
+        `SELECT eventId, eventType, schemaVersion, traceId, requestId, tenantId, subjectId, originCore, targetCore, occurredAt, policyVersion, payloadHash, previousEventHash, data
+         FROM quantum_events ORDER BY rowid DESC LIMIT ?`
+      ).all(limit) as Array<Record<string, unknown>>;
+      return rows.map((r) => ({
+        eventId: r.eventId, eventType: r.eventType, schemaVersion: r.schemaVersion,
+        traceId: r.traceId, requestId: r.requestId, tenantId: r.tenantId,
+        subjectId: r.subjectId, originCore: r.originCore, targetCore: r.targetCore,
+        occurredAt: r.occurredAt, policyVersion: r.policyVersion,
+        payloadHash: r.payloadHash, previousEventHash: r.previousEventHash,
+        data: r.data ? JSON.parse(r.data as string) : null,
+      })) as IsabellaEvent[];
+    } catch { /* fall through */ }
+  }
+  return fallbackLog.slice(-limit);
 }
 
-/**
- * Hash más reciente de la cadena de eventos.
- */
 export function getLastEventHash(): string {
   return lastEventHash;
 }
 
-/**
- * Métricas del event bus.
- */
 export function getEventBusMetrics() {
-  const recent = eventLog.slice(-200);
-  const byType: Record<string, number> = {};
-  for (const e of recent) {
-    byType[e.eventType] = (byType[e.eventType] || 0) + 1;
+  let totalEvents = 0;
+  const recentEventTypes: Record<string, number> = {};
+
+  if (isSqlite()) {
+    try {
+      const db = getDatabase();
+      const countRow = db.prepare("SELECT COUNT(*) as cnt FROM quantum_events").get() as { cnt: number };
+      totalEvents = countRow.cnt;
+      const recent = db.prepare("SELECT eventType FROM quantum_events ORDER BY rowid DESC LIMIT 200").all() as Array<{ eventType: string }>;
+      for (const e of recent) recentEventTypes[e.eventType] = (recentEventTypes[e.eventType] || 0) + 1;
+    } catch { /* fall through */ }
+  } else {
+    totalEvents = fallbackLog.length;
+    const recent = fallbackLog.slice(-200);
+    for (const e of recent) recentEventTypes[e.eventType] = (recentEventTypes[e.eventType] || 0) + 1;
   }
 
   return {
-    totalEvents: eventLog.length,
+    totalEvents,
     lastEventHash,
-    recentEventTypes: byType,
+    recentEventTypes,
     handlerCount: Array.from(handlers.values()).reduce((sum, s) => sum + s.size, 0),
   };
 }
