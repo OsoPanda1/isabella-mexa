@@ -39,6 +39,28 @@ import {
   QuantumExecuteSchema,
 } from "./src/lib/api-contracts";
 import { createLogger } from "./src/lib/logger";
+import {
+  activateKillSwitch,
+  executeNextStep,
+  resolveKillSwitch,
+  getKillSwitchStatus,
+  getKillSwitchEvents,
+} from "./src/lib/kill-switch";
+import { evaluateClaim, toEpistemicFormat, getClaimRadarMetrics } from "./src/lib/claim-radar";
+import { classifyEpistemicStatus, getEpistemicRules } from "./src/lib/epistemic";
+import { initializeDefaultAdapters, queryAdapters, hubHealth } from "./src/lib/mcp-adapters";
+import {
+  describeProblem,
+  explainToDeveloper,
+  getSystemSummary,
+  getMeshStatus as getAutomationMeshStatus,
+  getActiveFailures,
+  getActiveRepairChains,
+  executeRepairStep,
+  resolveFailureManually,
+  checkAllHealth,
+  startMonitoring,
+} from "./src/lib/automation";
 
 dotenv.config();
 
@@ -1515,6 +1537,151 @@ app.post("/api/v1/idlen/click", rateLimit, authenticate, async (req, res) => {
 });
 
 // ============================================================================
+// AUTOMATION MESH — Human-friendly self-healing interface
+// ============================================================================
+
+app.get("/api/v1/automation/status", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getSystemSummary() });
+});
+
+app.get("/api/v1/automation/health", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getAutomationMeshStatus() });
+});
+
+app.get("/api/v1/automation/failures", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getActiveFailures() });
+});
+
+app.post("/api/v1/automation/describe", authenticate, (req, res) => {
+  const { text } = req.body;
+  if (typeof text !== "string" || text.length < 3) {
+    res.status(400).json({ ok: false, error: "Provide a text description of the problem (min 3 chars)" });
+    return;
+  }
+  res.json({ ok: true, data: describeProblem(text) });
+});
+
+app.get("/api/v1/automation/developer-guide/:nodeId", authenticate, (req, res) => {
+  const guide = explainToDeveloper(req.params.nodeId);
+  res.json({ ok: true, data: guide });
+});
+
+app.get("/api/v1/automation/repair-chains", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getActiveRepairChains() });
+});
+
+app.post("/api/v1/automation/repair/:chainId/next", authenticate, (req, res) => {
+  const chain = executeRepairStep(req.params.chainId);
+  if (!chain) {
+    res.status(404).json({ ok: false, error: "Repair chain not found or already completed" });
+    return;
+  }
+  res.json({ ok: true, data: chain });
+});
+
+app.post("/api/v1/automation/resolve/:nodeId", authenticate, (req, res) => {
+  const { resolution } = req.body;
+  const resolved = resolveFailureManually(req.params.nodeId, resolution || "Manual resolution");
+  res.json({ ok: resolved, message: resolved ? "Failure resolved" : "No active failure for this node" });
+});
+
+// ============================================================================
+// KILL-SWITCH ENDPOINTS (Section 18.3)
+// ============================================================================
+
+app.get("/api/v1/kill-switch/status", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getKillSwitchStatus() });
+});
+
+app.post("/api/v1/kill-switch/activate", authenticate, (req, res) => {
+  const { trigger, severity } = req.body;
+  if (!trigger || typeof trigger !== "string") {
+    res.status(400).json({ ok: false, error: "trigger string required" });
+    return;
+  }
+  const event = activateKillSwitch(trigger, severity || "SEV-2");
+  res.json({ ok: true, data: event });
+});
+
+app.post("/api/v1/kill-switch/:eventId/step", authenticate, (req, res) => {
+  const event = executeNextStep(req.params.eventId);
+  if (!event) {
+    res.status(404).json({ ok: false, error: "Kill-switch event not found or all steps completed" });
+    return;
+  }
+  res.json({ ok: true, data: event });
+});
+
+app.post("/api/v1/kill-switch/:eventId/resolve", authenticate, (req, res) => {
+  const { approvedBy } = req.body;
+  if (!approvedBy || typeof approvedBy !== "string") {
+    res.status(400).json({ ok: false, error: "approvedBy string required" });
+    return;
+  }
+  const resolved = resolveKillSwitch(req.params.eventId, approvedBy);
+  res.json({ ok: resolved, message: resolved ? "Kill-switch resolved" : "Event not found or already resolved" });
+});
+
+app.get("/api/v1/kill-switch/events", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getKillSwitchEvents() });
+});
+
+// ============================================================================
+// CLAIM RADAR ENDPOINTS (Section 11)
+// ============================================================================
+
+app.post("/api/v1/claim-radar/evaluate", authenticate, async (req, res) => {
+  const { assertion, domain, source, sourceDoi, sourceOrcid, adapterIds, maxResults, timeoutMs } = req.body;
+  if (!assertion || !domain || !source) {
+    res.status(400).json({ ok: false, error: "assertion, domain, and source required" });
+    return;
+  }
+  try {
+    const claim = await evaluateClaim({ assertion, domain, source, sourceDoi, sourceOrcid, adapterIds, maxResults, timeoutMs });
+    res.json({ ok: true, data: toEpistemicFormat(claim) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "Claim evaluation failed" });
+  }
+});
+
+app.get("/api/v1/claim-radar/metrics", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getClaimRadarMetrics() });
+});
+
+// ============================================================================
+// EPISTEMIC GOVERNANCE ENDPOINTS (Section 11.2)
+// ============================================================================
+
+app.get("/api/v1/epistemic/rules", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getEpistemicRules() });
+});
+
+app.post("/api/v1/epistemic/classify", authenticate, (req, res) => {
+  const { domain, evidenceCount, contradictoryCount, avgRelevance, hasPrimarySource, hasDateAndScope } = req.body;
+  if (!domain || typeof evidenceCount !== "number") {
+    res.status(400).json({ ok: false, error: "domain and evidenceCount required" });
+    return;
+  }
+  const result = classifyEpistemicStatus({
+    domain,
+    evidenceCount,
+    contradictoryCount: contradictoryCount ?? 0,
+    avgRelevance: avgRelevance ?? 0,
+    hasPrimarySource: hasPrimarySource ?? false,
+    hasDateAndScope: hasDateAndScope ?? false,
+  });
+  res.json({ ok: true, data: result });
+});
+
+// ============================================================================
+// MCP HUB ENDPOINTS
+// ============================================================================
+
+app.get("/api/v1/mcp/health", authenticate, async (_req, res) => {
+  res.json({ ok: true, data: await hubHealth() });
+});
+
+// ============================================================================
 // PROCESS-LEVEL ERROR HANDLERS (prevents silent crashes)
 // ============================================================================
 process.on("unhandledRejection", (reason: unknown) => {
@@ -1545,6 +1712,12 @@ async function startServer() {
   
   // Bootstrap canonical documents into the registry
   await bootstrapCanonicalDocuments();
+
+  // Start automation mesh monitoring (self-healing)
+  startMonitoring();
+
+  // Initialize MCP Connectors Hub (Zenodo + LITLE)
+  initializeDefaultAdapters();
 
   app.listen(PORT, "0.0.0.0", () => {
     log.info("server_started", { port: PORT, env: process.env.NODE_ENV || "development" });

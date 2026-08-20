@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "schemaVersion": 2,
+  "systemIdentifier": "isabella-core",
+  "policyId": "EOCT_STRICT_V2",
+  "model": {
+    "temperature": 0,
+    "topP": 0.1,
+    "maxTokens": 4096
+  },
+  "grounding": {
+    "requireEvidenceFor": ["academic", "territorial", "legal", "medical", "financial"],
+    "uncertaintyLabel": "UNCERTAIN",
+    "retrievalIsNotProof": true
+  },
+  "security": {
+    "allowNetworkByDefault": false,
+    "allowToolsByDefault": false,
+    "redactSecretsFromLogs": true,
+    "requireSignedArtifactManifest": true
+  },
+  "routing": {
+    "default": "local",
+    "federatedRequiresConsent": true,
+    "denyIfDataClass": ["restricted"]
+  },
+  "responseContract": {
+    "include": ["requestId", "claims", "evidence", "policyDecision", "provenance"],
+    "neverClaimProductionWithoutEvidence": true
+  }
+}
