@@ -1,28 +1,433 @@
-import React, { useEffect } from "react";
+import {
+  Component,
+  lazy,
+  Suspense,
+  type ComponentType,
+  type ErrorInfo,
+  type ReactNode,
+  useEffect,
+  useMemo,
+} from "react";
+
 import { CrownProvider, useCrown } from "./context/CrownContext";
 import { Header } from "./components/Header";
 import { GlobalFooter } from "./components/Footer/GlobalFooter";
-import { IsabellaTerminal } from "./components/Terminal/IsabellaTerminal";
-import { IsabellaPresenceView } from "./components/Presence/IsabellaPresenceView";
-import { ImageStudioView } from "./components/Studio/ImageStudioView";
-import { VoiceStudioView } from "./components/Studio/VoiceStudioView";
-import { Cockpit } from "./components/Dashboard/Cockpit";
-import { SynapticFlowDiagram } from "./components/Dashboard/SynapticFlowDiagram";
-import { PresentationView } from "./components/Presentation/PresentationView";
-import { IsabellaHubView } from "./components/Hub/IsabellaHubView";
-import { TraceabilityDashboard } from "./components/Traceability/TraceabilityDashboard";
-import { CodexView } from "./components/Codex/CodexView";
-import { CattleyaFinanceView } from "./components/Dashboard/CattleyaFinanceView";
-import { QuantumMeshDashboard } from "./components/Quantum/QuantumMeshDashboard";
-import { IsabellaWelcomeModal } from "./components/Welcome/IsabellaWelcomeModal";
-import { IsabellaCinematicTrailer } from "./components/Welcome/IsabellaCinematicTrailer";
-import { KeyboardShortcutsModal } from "./components/Shortcuts/KeyboardShortcutsModal";
-import { SecurityGovernanceModal } from "./components/Security/SecurityGovernanceModal";
 import { ShortcutToast } from "./components/Shortcuts/ShortcutToast";
 import { useGlobalShortcuts } from "./hooks/useGlobalShortcuts";
 
-const MainContent: React.FC = () => {
+/*
+ * ============================================================================
+ * ISABELLA VILLASEÑOR AI — APPLICATION SHELL
+ * ============================================================================
+ * Principios:
+ * - El App Shell sólo orquesta: no contiene lógica de dominio.
+ * - Cada vista pesada se carga bajo demanda.
+ * - Toda vista tiene estado de carga y frontera de error.
+ * - La telemetría sólo usa metadata permitida; nunca contenido de conversación.
+ * - Fondos y diseño viven en index.css: App.tsx no mezcla estilos inline.
+ * ============================================================================
+ */
+
+type ActiveView =
+  | "terminal"
+  | "presence"
+  | "traceability"
+  | "image_studio"
+  | "voice_studio"
+  | "architecture"
+  | "synapse"
+  | "telemetry"
+  | "presentation"
+  | "hub"
+  | "codex"
+  | "cattleya_finance"
+  | "quantum_mesh";
+
+type ViewDefinition = {
+  id: ActiveView;
+  label: string;
+  description: string;
+  component: ComponentType;
+};
+
+/*
+ * Lazy imports:
+ * Cada módulo complejo deja de pesar sobre el primer render.
+ * Para mantener esta convención, cada archivo de vista debe exportar default.
+ */
+const IsabellaTerminal = lazy(
+  () => import("./components/Terminal/IsabellaTerminal")
+);
+
+const IsabellaPresenceView = lazy(
+  () => import("./components/Presence/IsabellaPresenceView")
+);
+
+const TraceabilityDashboard = lazy(
+  () => import("./components/Traceability/TraceabilityDashboard")
+);
+
+const ImageStudioView = lazy(
+  () => import("./components/Studio/ImageStudioView")
+);
+
+const VoiceStudioView = lazy(
+  () => import("./components/Studio/VoiceStudioView")
+);
+
+const Cockpit = lazy(
+  () => import("./components/Dashboard/Cockpit")
+);
+
+const SynapticFlowDiagram = lazy(
+  () => import("./components/Dashboard/SynapticFlowDiagram")
+);
+
+const PresentationView = lazy(
+  () => import("./components/Presentation/PresentationView")
+);
+
+const IsabellaHubView = lazy(
+  () => import("./components/Hub/IsabellaHubView")
+);
+
+const CodexView = lazy(
+  () => import("./components/Codex/CodexView")
+);
+
+const CattleyaFinanceView = lazy(
+  () => import("./components/Dashboard/CattleyaFinanceView")
+);
+
+const QuantumMeshDashboard = lazy(
+  () => import("./components/Quantum/QuantumMeshDashboard")
+);
+
+/*
+ * Los modales no bloquean el primer bundle.
+ * Se importan al abrirse, no antes.
+ */
+const IsabellaWelcomeModal = lazy(
+  () => import("./components/Welcome/IsabellaWelcomeModal")
+);
+
+const IsabellaCinematicTrailer = lazy(
+  () => import("./components/Welcome/IsabellaCinematicTrailer")
+);
+
+const KeyboardShortcutsModal = lazy(
+  () => import("./components/Shortcuts/KeyboardShortcutsModal")
+);
+
+const SecurityGovernanceModal = lazy(
+  () => import("./components/Security/SecurityGovernanceModal")
+);
+
+/*
+ * Adaptador para módulos sin export default.
+ *
+ * Ejemplo si Cockpit tuviera:
+ * export const Cockpit = () => ...
+ *
+ * Sustituye el import por:
+ * const Cockpit = lazyNamed(
+ *   () => import("./components/Dashboard/Cockpit"),
+ *   "Cockpit"
+ * );
+ */
+function lazyNamed<T extends Record<string, ComponentType>>(
+  importer: () => Promise<T>,
+  exportName: keyof T
+) {
+  return lazy(async () => {
+    const module = await importer();
+    return { default: module[exportName] };
+  });
+}
+
+/*
+ * ============================================================================
+ * ERROR BOUNDARY
+ * ============================================================================
+ * Una vista no puede derribar toda Isabella.
+ * Si un dashboard o módulo externo falla, la shell permanece navegable.
+ */
+
+type ViewErrorBoundaryProps = {
+  viewLabel: string;
+  children: ReactNode;
+};
+
+type ViewErrorBoundaryState = {
+  hasError: boolean;
+};
+
+class ViewErrorBoundary extends Component<
+  ViewErrorBoundaryProps,
+  ViewErrorBoundaryState
+> {
+  public state: ViewErrorBoundaryState = {
+    hasError: false,
+  };
+
+  public static getDerivedStateFromError(): ViewErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  public componentDidCatch(error: Error, info: ErrorInfo) {
+    window.dispatchEvent(
+      new CustomEvent("isabella:view-error", {
+        detail: {
+          view: this.props.viewLabel,
+          message: error.message,
+          componentStack: info.componentStack,
+        },
+      })
+    );
+  }
+
+  public componentDidUpdate(previousProps: ViewErrorBoundaryProps) {
+    if (
+      previousProps.viewLabel !== this.props.viewLabel &&
+      this.state.hasError
+    ) {
+      this.setState({ hasError: false });
+    }
+  }
+
+  private handleRetry = () => {
+    this.setState({ hasError: false });
+  };
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <section
+          className="empty-state"
+          role="alert"
+          aria-labelledby="view-error-title"
+        >
+          <div className="max-w-md">
+            <p className="identity-mark">Continuidad operativa</p>
+
+            <h1 id="view-error-title" className="title-section mt-3">
+              Este módulo no pudo inicializarse
+            </h1>
+
+            <p className="text-muted mt-2 text-sm leading-6">
+              La arquitectura principal permanece disponible. Puedes intentar
+              cargar de nuevo este espacio sin perder la navegación.
+            </p>
+
+            <button
+              type="button"
+              className="btn btn-secondary mt-5"
+              onClick={this.handleRetry}
+            >
+              Reintentar módulo
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+/*
+ * ============================================================================
+ * LOADING STATE
+ * ============================================================================
+ */
+
+function ViewLoadingState({ label }: { label: string }) {
+  return (
+    <section
+      className="surface overflow-hidden"
+      aria-busy="true"
+      aria-live="polite"
+      aria-label={`Cargando ${label}`}
+    >
+      <div className="panel-header">
+        <div className="min-w-0 space-y-3">
+          <div className="skeleton h-3 w-28" />
+          <div className="skeleton h-7 w-64 max-w-full" />
+        </div>
+
+        <div className="skeleton h-8 w-20 rounded-full" />
+      </div>
+
+      <div className="space-y-4 p-5">
+        <div className="skeleton h-4 w-full" />
+        <div className="skeleton h-4 w-[88%]" />
+        <div className="skeleton h-4 w-[67%]" />
+
+        <div className="grid gap-4 pt-4 sm:grid-cols-3">
+          <div className="skeleton h-28" />
+          <div className="skeleton h-28" />
+          <div className="skeleton h-28" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/*
+ * ============================================================================
+ * UNIFIED VIEW REGISTRY
+ * ============================================================================
+ * Este registro es la única fuente de verdad entre estado y composición.
+ * Ya no hay una cascada de 13 ifs en JSX.
+ */
+
+const VIEW_REGISTRY: Record<ActiveView, ViewDefinition> = {
+  terminal: {
+    id: "terminal",
+    label: "Conversación con Isabella",
+    description: "Espacio de inteligencia contextual y asistencia soberana.",
+    component: IsabellaTerminal,
+  },
+
+  presence: {
+    id: "presence",
+    label: "Presencia Isabella",
+    description: "Interfaz de presencia, identidad y vínculo contextual.",
+    component: IsabellaPresenceView,
+  },
+
+  traceability: {
+    id: "traceability",
+    label: "Trazabilidad",
+    description: "Evidencia, auditoría y continuidad de decisiones.",
+    component: TraceabilityDashboard,
+  },
+
+  image_studio: {
+    id: "image_studio",
+    label: "Estudio de imagen",
+    description: "Producción visual con control creativo y trazabilidad.",
+    component: ImageStudioView,
+  },
+
+  voice_studio: {
+    id: "voice_studio",
+    label: "Estudio de voz",
+    description: "Síntesis, dirección y producción vocal.",
+    component: VoiceStudioView,
+  },
+
+  architecture: {
+    id: "architecture",
+    label: "Arquitectura CROWN",
+    description: "Operación, capacidad y salud del sistema cognitivo.",
+    component: Cockpit,
+  },
+
+  synapse: {
+    id: "synapse",
+    label: "Flujo sináptico",
+    description: "Relación entre contexto, razonamiento y ejecución.",
+    component: SynapticFlowDiagram,
+  },
+
+  telemetry: {
+    id: "telemetry",
+    label: "Telemetría",
+    description: "Indicadores operativos de la infraestructura cognitiva.",
+    component: Cockpit,
+  },
+
+  presentation: {
+    id: "presentation",
+    label: "Presentación",
+    description: "Narrativa institucional de Isabella Villaseñor AI.",
+    component: PresentationView,
+  },
+
+  hub: {
+    id: "hub",
+    label: "Hub Isabella",
+    description: "Acceso central a capacidades, espacios y flujos activos.",
+    component: IsabellaHubView,
+  },
+
+  codex: {
+    id: "codex",
+    label: "Codex",
+    description: "Marco documental, principios y conocimiento operativo.",
+    component: CodexView,
+  },
+
+  cattleya_finance: {
+    id: "cattleya_finance",
+    label: "Cattleya Finance",
+    description: "Visibilidad financiera, sostenibilidad y operación.",
+    component: CattleyaFinanceView,
+  },
+
+  quantum_mesh: {
+    id: "quantum_mesh",
+    label: "Quantum Mesh",
+    description: "Estado de red, continuidad y coordinación distribuida.",
+    component: QuantumMeshDashboard,
+  },
+};
+
+/*
+ * ============================================================================
+ * ADVERTISING-SAFE TELEMETRY
+ * ============================================================================
+ * No se transmite:
+ * - prompt, respuesta, memoria, archivo, imagen o audio
+ * - identificadores personales
+ * - emoción, salud, ingresos o información de perfil sensible
+ *
+ * Sí se transmite:
+ * - vista activa y tipo de superficie
+ * - datos técnicos estrictamente necesarios para campañas autorizadas
+ */
+
+function trackSafePageView(activeView: ActiveView) {
+  if (typeof window === "undefined") return;
+
+  const ads = window.isabellaAds;
+
+  if (ads?.consent === "granted") {
+    ads.track("PageView", {
+      view: activeView,
+      navigation: "application-state",
+    });
+
+    return;
+  }
+
+  /*
+   * Compatibilidad temporal:
+   * Si mantienes otro sistema de telemetría institucional, con consentimiento
+   * propio, conéctalo aquí. No envíes datos de chat.
+   */
+  if (typeof window.idlen === "function") {
+    try {
+      window.idlen("track", "PageView", {
+        view: activeView,
+        navigation: "application-state",
+      });
+    } catch {
+      /* La experiencia principal no depende de un proveedor publicitario. */
+    }
+  }
+}
+
+/*
+ * ============================================================================
+ * MAIN CONTENT
+ * ============================================================================
+ */
+
+function MainContent() {
   useGlobalShortcuts();
+
   const {
     state,
     isWelcomeOpen,
@@ -34,90 +439,129 @@ const MainContent: React.FC = () => {
     lastShortcutTriggered,
     clearShortcutFeedback,
   } = useCrown();
-  const { activeView } = state;
 
-  // Idlen SPA PageView tracking — our app uses state-based navigation,
-  // not History API, so the pixel can't auto-detect route changes.
+  const activeView = state.activeView as ActiveView;
+
+  const view = useMemo(
+    () => VIEW_REGISTRY[activeView] ?? VIEW_REGISTRY.terminal,
+    [activeView]
+  );
+
+  const ActiveViewComponent = view.component;
+
   useEffect(() => {
-    if (typeof window !== "undefined" && typeof window.idlen === "function") {
-      try { window.idlen("track", "PageView"); } catch { /* pixel not loaded */ }
-    }
-  }, [activeView]);
+    document.title = `${view.label} — Isabella Villaseñor AI`;
+
+    trackSafePageView(view.id);
+
+    window.dispatchEvent(
+      new CustomEvent("isabella:view-changed", {
+        detail: {
+          id: view.id,
+          label: view.label,
+        },
+      })
+    );
+  }, [view.id, view.label]);
 
   return (
     <>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        {activeView === "terminal" && <IsabellaTerminal />}
-        {activeView === "presence" && <IsabellaPresenceView />}
-        {activeView === "traceability" && <TraceabilityDashboard />}
-        {activeView === "image_studio" && <ImageStudioView />}
-        {activeView === "voice_studio" && <VoiceStudioView />}
-        {activeView === "architecture" && <Cockpit />}
-        {activeView === "synapse" && (
-          <div className="space-y-6">
-            <SynapticFlowDiagram />
-            <Cockpit />
-          </div>
-        )}
-        {activeView === "telemetry" && <Cockpit />}
-        {activeView === "presentation" && <PresentationView />}
-        {activeView === "hub" && <IsabellaHubView />}
-        {activeView === "codex" && <CodexView />}
-        {activeView === "cattleya_finance" && <CattleyaFinanceView />}
-        {activeView === "quantum_mesh" && <QuantumMeshDashboard />}
+      <main
+        id="main-content"
+        className="app-main"
+        tabIndex={-1}
+        aria-labelledby="view-title"
+      >
+        <div className="page-container">
+          <header className="mb-6">
+            <p className="identity-mark">Isabella Villaseñor AI</p>
+
+            <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h1 id="view-title" className="title-page">
+                  {view.label}
+                </h1>
+
+                <p className="text-muted mt-2 max-w-2xl text-sm leading-6">
+                  {view.description}
+                </p>
+              </div>
+
+              <span className="badge badge-success">
+                <span className="status-dot" aria-hidden="true" />
+                Sistema disponible
+              </span>
+            </div>
+
+            <div className="divider-platinum mt-6" />
+          </header>
+
+          <ViewErrorBoundary viewLabel={view.label}>
+            <Suspense fallback={<ViewLoadingState label={view.label} />}>
+              {view.id === "synapse" ? (
+                <div className="space-y-6">
+                  <ActiveViewComponent />
+                  <Suspense fallback={<ViewLoadingState label="Cockpit" />}>
+                    <Cockpit />
+                  </Suspense>
+                </div>
+              ) : (
+                <ActiveViewComponent />
+              )}
+            </Suspense>
+          </ViewErrorBoundary>
+        </div>
       </main>
 
-      {/* 16-Second AAA Cinematic Intro Trailer (Auto-opens on link entry) */}
-      <IsabellaCinematicTrailer
-        isOpen={isTrailerOpen}
-        onClose={closeTrailer}
-      />
+      <Suspense fallback={null}>
+        {isTrailerOpen ? (
+          <IsabellaCinematicTrailer
+            isOpen={isTrailerOpen}
+            onClose={closeTrailer}
+          />
+        ) : null}
 
-      {/* Zero-Trust Security & Governance Telemetry Modal */}
-      <SecurityGovernanceModal />
+        {isWelcomeOpen ? (
+          <IsabellaWelcomeModal
+            isOpen={isWelcomeOpen}
+            onClose={closeWelcomeModal}
+          />
+        ) : null}
 
-      {/* Elegant Welcoming & Onboarding Guide for Everyone */}
-      <IsabellaWelcomeModal
-        isOpen={isWelcomeOpen}
-        onClose={closeWelcomeModal}
-      />
+        {isShortcutsOpen ? (
+          <KeyboardShortcutsModal
+            isOpen={isShortcutsOpen}
+            onClose={closeShortcutsModal}
+          />
+        ) : null}
 
-      {/* Power User Global Keyboard Shortcuts Modal */}
-      <KeyboardShortcutsModal
-        isOpen={isShortcutsOpen}
-        onClose={closeShortcutsModal}
-      />
+        <SecurityGovernanceModal />
+      </Suspense>
 
-      {/* Subtle Toast Feedback for Hotkeys */}
       <ShortcutToast
         message={lastShortcutTriggered}
         onDismiss={clearShortcutFeedback}
       />
     </>
   );
-};
+}
+
+/*
+ * ============================================================================
+ * APP ROOT
+ * ============================================================================
+ */
 
 export default function App() {
   return (
     <CrownProvider>
-      <div className="min-h-screen bg-[#030712] text-[#F8FAFC] flex flex-col selection:bg-blue-600 selection:text-white relative font-sans">
-        {/* Subtle Enterprise Precision Grid & Ambient Lighting (Petrol, Electric Blue, Gold) */}
-        <div
-          className="fixed inset-0 pointer-events-none opacity-[0.14]"
-          style={{
-            backgroundImage: `radial-gradient(rgba(56, 189, 248, 0.25) 1px, transparent 1px)`,
-            backgroundSize: "36px 36px",
-          }}
-        />
-        {/* Petroleum Blue Depth Ambient */}
-        <div className="fixed top-0 left-1/4 w-[36rem] h-[36rem] bg-[#0B2545]/30 rounded-full blur-[120px] pointer-events-none" />
-        {/* Electric Neural Blue Focus Ambient */}
-        <div className="fixed top-1/3 right-1/4 w-[30rem] h-[30rem] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-        {/* Subtle Warm Champagne Gold Aura */}
-        <div className="fixed bottom-10 left-1/3 w-[26rem] h-[26rem] bg-amber-500/5 rounded-full blur-[150px] pointer-events-none" />
-
+      <div className="app-shell flex min-h-dvh flex-col">
         <Header />
-        <MainContent />
+
+        <div className="flex min-h-0 flex-1 flex-col">
+          <MainContent />
+        </div>
+
         <GlobalFooter />
       </div>
     </CrownProvider>
