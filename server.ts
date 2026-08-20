@@ -26,8 +26,23 @@ import {
   type IsabellaPlanId,
   type MeteredCapability,
 } from "./src/lib/subscription.server";
+import {
+  validateBody,
+  PerceptionInputSchema,
+  CognitiveProcessSchema,
+  ImageGenSchema,
+  TTSSchema,
+  AgentLeaseSchema,
+  AgentChatSchema,
+  IdlenClickSchema,
+  CheckoutSchema,
+  QuantumExecuteSchema,
+} from "./src/lib/api-contracts";
+import { createLogger } from "./src/lib/logger";
 
 dotenv.config();
+
+const log = createLogger("server");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -237,8 +252,10 @@ app.get("/api/v1/billing/usage", authenticate, (req, res) => {
 });
 
 app.post("/api/v1/billing/checkout", rateLimit, authenticate, requireScope("billing:checkout"), (req, res) => {
+  const parsed = validateBody(CheckoutSchema, req, res);
+  if (!parsed) return;
   const { userId } = getBillingIdentity(req);
-  const requestedPlan = (req.body?.planId || req.body?.plan || "plus") as IsabellaPlanId;
+  const requestedPlan = (parsed.planId || parsed.plan || "plus") as IsabellaPlanId;
   if (requestedPlan === "free" || requestedPlan === "custom") {
     return res.status(400).json({ ok: false, error: "Selecciona plus, premium, vip o enterprise para checkout automático." });
   }
@@ -289,19 +306,18 @@ app.get("/api/v1/isabella", (req, res) => {
 // 2. POST /api/v1/isabella - Perception Processor (Next.js / Hub standard route)
 app.post("/api/v1/isabella", rateLimit, authenticate, quotaGate("chat"), async (req, res) => {
   try {
-    const body = req.body || {};
+    const parsed = validateBody(PerceptionInputSchema, req, res);
+    if (!parsed) return;
     
     // Normalization & Validation of Perception
     const perception: IsabellaPerception = {
-      sessionId: body.sessionId || `sess-${Date.now()}`,
+      sessionId: parsed.sessionId || `sess-${Date.now()}`,
       actorId: currentPrincipal(req).sub,
-      territoryId: body.territoryId || "rdm-nodo-cero",
-      inputType: ["chat", "event", "signal", "api", "ui"].includes(body.inputType) 
-        ? body.inputType 
-        : "chat",
-      payload: body.payload || (body.text ? { text: body.text } : {}),
-      timestamp: body.timestamp || new Date().toISOString(),
-      metadata: body.metadata || {},
+      territoryId: parsed.territoryId || "rdm-nodo-cero",
+      inputType: parsed.inputType || "chat",
+      payload: parsed.payload || (parsed.text ? { text: parsed.text } : {}),
+      timestamp: parsed.timestamp || new Date().toISOString(),
+      metadata: parsed.metadata || {},
     };
 
     // Execute canonical domain handler
@@ -314,11 +330,8 @@ app.post("/api/v1/isabella", rateLimit, authenticate, quotaGate("chat"), async (
       evaluatedAt: new Date().toISOString(),
     });
   } catch (err: any) {
-    console.error("[isabella.v1.api.error]", err);
-    return res.status(400).json({
-      ok: false,
-      error: err?.message || String(err),
-    });
+    log.error("perception_error", { error: err?.message });
+    return res.status(400).json({ ok: false, error: err?.message || String(err) });
   }
 });
 
@@ -489,9 +502,10 @@ setInterval(() => {
 
 // 11. POST /api/v1/isabella/agent/lease - Lease an autonomous Isabella Agent
 app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("agent:lease"), quotaGate("agent"), (req, res) => {
-  const body = req.body || {};
+  const parsed = validateBody(AgentLeaseSchema, req, res);
+  if (!parsed) return;
   const sessionId = `isabella-agent-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-  const durationMinutes = body.leaseDurationMinutes || 60;
+  const durationMinutes = parsed.leaseDurationMinutes || 60;
   const now = new Date();
   const expiresAt = new Date(now.getTime() + durationMinutes * 60000);
 
@@ -500,7 +514,7 @@ app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("
     status: "active",
     createdAt: now.toISOString(),
     expiresAt: expiresAt.toISOString(),
-    systemInstructions: body.systemInstructions || "Eres Isabella Villaseñor AI, infraestructura cognitiva territorial gobernada.",
+    systemInstructions: parsed.systemInstructions || "Eres Isabella Villaseñor AI, infraestructura cognitiva territorial gobernada.",
     capabilities: {
       allowRunCommand: false,
       allowFileEdit: false,
@@ -509,8 +523,8 @@ app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("
       allowNetworkFetch: true,
       securityLevel: "zero_trust_strict",
     },
-    preset: body.activePreset || "prime",
-    model: body.primaryModel || "gemini-3.7-flash",
+    preset: parsed.activePreset || "prime",
+    model: parsed.primaryModel || "gemini-3.7-flash",
     history: [],
   };
 
@@ -540,7 +554,9 @@ app.post("/api/v1/isabella/agent/lease", rateLimit, authenticate, requireScope("
 // 12. POST /api/v1/isabella/agent/chat - Programmatic Agent Chat Execution with Thought & Tool Interception
 app.post("/api/v1/isabella/agent/chat", rateLimit, authenticate, requireScope("agent:chat"), quotaGate("chat"), async (req, res) => {
   try {
-    const { sessionId, prompt, contextPayload } = req.body || {};
+    const parsed = validateBody(AgentChatSchema, req, res);
+    if (!parsed) return;
+    const { sessionId, prompt, contextPayload } = parsed;
     let session = sessionId ? activeAgentSessions.get(sessionId) : null;
 
     if (!session) {
@@ -613,9 +629,9 @@ app.post("/api/v1/isabella/agent/chat", rateLimit, authenticate, requireScope("a
   }
 });
 
-// 13. GET /api/v1/isabella/agent/stream - SSE Real-time Streaming for Tokens, Thoughts & Tools
-app.get("/api/v1/isabella/agent/stream", authenticate, requireScope("agent:chat"), async (req, res) => {
-  const prompt = (req.query.prompt as string) || "Hola Isabella";
+// 13. POST /api/v1/isabella/agent/stream - SSE Real-time Streaming for Tokens, Thoughts & Tools
+app.post("/api/v1/isabella/agent/stream", authenticate, requireScope("agent:chat"), async (req, res) => {
+  const prompt = (req.body?.prompt as string) || "Hola Isabella";
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -684,11 +700,9 @@ function buildGenerativeArtworkUrl(prompt: string, style = "cyber_ethereal", asp
 // Image Generation API: Gemini Image Generation with Generative Flux Engine
 app.post("/api/isabella/generate-image", rateLimit, authenticate, quotaGate("image"), async (req, res) => {
   const startTime = Date.now();
-  const { prompt, style = "cyber_ethereal", aspectRatio = "1:1" } = req.body;
-
-  if (!prompt || typeof prompt !== "string") {
-    return res.status(400).json({ error: "Missing or invalid image prompt." });
-  }
+  const parsed = validateBody(ImageGenSchema, req, res);
+  if (!parsed) return;
+  const { prompt, style = "cyber_ethereal", aspectRatio = "1:1" } = parsed;
 
   const ai = getGenAI();
 
@@ -734,7 +748,7 @@ app.post("/api/isabella/generate-image", rateLimit, authenticate, quotaGate("ima
         }
       }
     } catch (nanoErr: any) {
-      console.warn("Nano banana image generation attempt failed, trying Imagen fallback:", nanoErr?.message || nanoErr);
+      log.warn("image_gen_nano_fallback", { error: nanoErr?.message || nanoErr });
     }
 
     // 2. Try Imagen 3 fallback
@@ -771,7 +785,7 @@ app.post("/api/isabella/generate-image", rateLimit, authenticate, quotaGate("ima
         });
       }
     } catch (imagenErr: any) {
-      console.warn("Imagen fallback unavailable, activating Neural Flux generative engine:", imagenErr?.message || imagenErr);
+      log.warn("image_gen_imagen_fallback", { error: imagenErr?.message || imagenErr });
     }
   }
 
@@ -796,11 +810,9 @@ app.post("/api/isabella/generate-image", rateLimit, authenticate, quotaGate("ima
 // Text-to-Speech API
 app.post("/api/isabella/tts", rateLimit, authenticate, quotaGate("voice", (req) => Math.ceil(String(req.body?.text || "").length / 14)), async (req, res) => {
   const startTime = Date.now();
-  const { text, pitch = 1.05, rate = 1.0, timbre = "calida" } = req.body;
-
-  if (!text || typeof text !== "string") {
-    return res.status(400).json({ error: "Missing or invalid text for TTS." });
-  }
+  const parsed = validateBody(TTSSchema, req, res);
+  if (!parsed) return;
+  const { text, pitch = 1.05, rate = 1.0, timbre = "calida" } = parsed;
 
   const ai = getGenAI();
 
@@ -841,7 +853,7 @@ app.post("/api/isabella/tts", rateLimit, authenticate, quotaGate("voice", (req) 
         });
       }
     } catch (ttsErr: any) {
-      console.warn("Gemini TTS service notice:", ttsErr?.message || ttsErr);
+      log.warn("tts_gemini_fallback", { error: ttsErr?.message || ttsErr });
     }
   }
 
@@ -858,17 +870,15 @@ app.post("/api/isabella/tts", rateLimit, authenticate, quotaGate("voice", (req) 
 // Cognitive Processing API: CROWN routing + Multi-module cognitive synthesis
 app.post("/api/isabella/process", rateLimit, authenticate, quotaGate("chat"), async (req, res) => {
   const startTime = Date.now();
+  const parsed = validateBody(CognitiveProcessSchema, req, res);
+  if (!parsed) return;
   const {
     input,
     history = [],
     crownConfig = {},
     activePreset = "prime",
     sessionId: clientSessionId,
-  } = req.body;
-
-  if (!input || typeof input !== "string") {
-    return res.status(400).json({ error: "Missing or invalid prompt input." });
-  }
+  } = parsed;
 
   // Stable sessionId: use client-provided ID (generated once per browser session)
   // Falls back to server-generated if client doesn't send one
@@ -1037,7 +1047,7 @@ CRITICAL: Return a valid JSON response strictly following this schema:
         },
       });
     } catch (err: any) {
-      console.warn("Gemini cloud synthesis cascade exhausted, transitioning seamlessly to Autonomous Cognitive Engine:", err?.message || err);
+      log.warn("gemini_cascade_exhausted", { error: err?.message || err });
       // Fall through to cognitive engine fallback
     }
   }
@@ -1262,7 +1272,8 @@ import { getIsabellaAd, trackIdlenClick, maybeAppendAd, getIdlenStatus } from ".
 // 1. POST /api/v1/quantum/execute — Full mesh execution (13-step governed pipeline)
 app.post("/api/v1/quantum/execute", rateLimit, authenticate, requireScope("quantum:execute"), async (req, res) => {
   try {
-    const body = req.body || {};
+    const parsed = validateBody(QuantumExecuteSchema, req, res);
+    if (!parsed) return;
     const principal = currentPrincipal(req);
     const traceId = req.headers["x-trace-id"] as string || `trace-${randomUUID()}`;
 
@@ -1272,19 +1283,19 @@ app.post("/api/v1/quantum/execute", rateLimit, authenticate, requireScope("quant
       traceId,
       tenantId: principal.tenantId,
       subjectId: principal.sub,
-      provider: body.provider || "default.qubit",
-      repository: body.repository || "PennyLaneAI/pennylane",
-      mode: body.mode || "analytic",
-      wires: body.wires || 4,
-      shots: body.shots || null,
-      features: body.features || [],
-      weights: body.weights || [],
+      provider: parsed.provider || "default.qubit",
+      repository: parsed.repository || "PennyLaneAI/pennylane",
+      mode: parsed.mode || "analytic",
+      wires: parsed.wires || 4,
+      shots: parsed.shots || null,
+      features: parsed.features || [],
+      weights: parsed.weights || [],
       scopes: principal.scopes,
       policyVersion: "quantum-policy-v1",
-      metadata: body.metadata || {},
+      metadata: parsed.metadata || {},
     };
 
-    const parsed = PrincipalSchema.safeParse({
+    const principalParsed = PrincipalSchema.safeParse({
       subjectId: principal.sub,
       tenantId: principal.tenantId,
       role: principal.roles?.[0] || "user",
@@ -1293,11 +1304,11 @@ app.post("/api/v1/quantum/execute", rateLimit, authenticate, requireScope("quant
       riskLevel: "low",
     });
 
-    if (!parsed.success) {
-      return res.status(400).json({ ok: false, error: "Invalid principal", issues: parsed.error.issues });
+    if (!principalParsed.success) {
+      return res.status(400).json({ ok: false, error: "Invalid principal", issues: principalParsed.error.issues });
     }
 
-    const result = await executeQuantumMesh(request, parsed.data);
+    const result = await executeQuantumMesh(request, principalParsed.data);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || String(err) });
@@ -1496,10 +1507,9 @@ app.get("/api/health/idlen", (_req, res) => {
 });
 
 app.post("/api/v1/idlen/click", rateLimit, authenticate, async (req, res) => {
-  const { adId, publisherId, requestId } = req.body || {};
-  if (!adId || !publisherId || !requestId) {
-    return res.status(400).json({ error: "Missing adId, publisherId, or requestId" });
-  }
+  const parsed = validateBody(IdlenClickSchema, req, res);
+  if (!parsed) return;
+  const { adId, publisherId, requestId } = parsed;
   const result = await trackIdlenClick({ adId, publisherId, requestId });
   res.json({ ok: result.tracked, error: result.error });
 });
@@ -1508,11 +1518,11 @@ app.post("/api/v1/idlen/click", rateLimit, authenticate, async (req, res) => {
 // PROCESS-LEVEL ERROR HANDLERS (prevents silent crashes)
 // ============================================================================
 process.on("unhandledRejection", (reason: unknown) => {
-  console.error("[ISABELLA] Unhandled Promise Rejection:", reason);
+  log.error("unhandled_rejection", { reason: String(reason) });
 });
 
 process.on("uncaughtException", (err: Error) => {
-  console.error("[ISABELLA] Uncaught Exception:", err);
+  log.error("uncaught_exception", { message: err.message, stack: err.stack });
   process.exit(1);
 });
 
@@ -1537,7 +1547,7 @@ async function startServer() {
   await bootstrapCanonicalDocuments();
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Isabella Villaseñor AI Server running on port ${PORT}`);
+    log.info("server_started", { port: PORT, env: process.env.NODE_ENV || "development" });
   });
 }
 

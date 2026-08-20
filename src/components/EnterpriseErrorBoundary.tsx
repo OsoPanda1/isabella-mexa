@@ -3,14 +3,15 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 
 interface Props {
   children?: ReactNode;
+  fallbackLabel?: string;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  resetKey: number;
 }
 
-// Ensure type declaration for React Class Component in React 19 typings
 export class EnterpriseErrorBoundary extends Component<Props, State> {
   public declare state: State;
   public declare props: Props;
@@ -21,10 +22,11 @@ export class EnterpriseErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
+      resetKey: 0,
     };
   }
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -33,8 +35,7 @@ export class EnterpriseErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null });
-    window.location.reload();
+    this.setState((prev) => ({ hasError: false, error: null, resetKey: prev.resetKey + 1 }));
   };
 
   public render(): ReactNode {
@@ -61,6 +62,6 @@ export class EnterpriseErrorBoundary extends Component<Props, State> {
       );
     }
 
-    return this.props.children;
+    return <React.Fragment key={this.state.resetKey}>{this.props.children}</React.Fragment>;
   }
 }
