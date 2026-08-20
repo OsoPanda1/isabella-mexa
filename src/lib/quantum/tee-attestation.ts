@@ -3,8 +3,12 @@
  * Atestación verificable: nonce, measurement/image digest, policy version,
  * platform identity, expiration, signature chain.
  * NOTA: Una cadena mock NO es atestación.
+ *
+ * SEGURIDAD: Requiere FEATURE_LAB_MODE=true en producción.
+ * Sin esta flag, generateAttestation lanza PROTOTYPE_NOT_AVAILABLE.
  */
 import { randomUUID, createHash } from "node:crypto";
+import { requireLabMode } from "../lab-mode";
 
 export interface TEEAttestationEvidence {
   attestationId: string;
@@ -36,6 +40,7 @@ export function generateAttestation(params: {
   measurement: string;
   policyVersion: string;
 }): TEEAttestationEvidence {
+  requireLabMode("TEE-ATTESTATION");
   const nonce = randomUUID();
   const measurementDigest = createHash("sha256")
     .update(`${params.measurement}:${nonce}`)

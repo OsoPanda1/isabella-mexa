@@ -3,8 +3,12 @@
  * Firma de decisiones policy comprometidas, bloques BookPI, manifest de worker,
  * digest de artefactos Catalyst, eventos de replicación federada.
  * PROTOTYPE: Simulación con dual YubiHSM + failover.
+ *
+ * SEGURIDAD: Requiere FEATURE_LAB_MODE=true en producción.
+ * Sin esta flag, signHSM lanza PROTOTYPE_NOT_AVAILABLE.
  */
 import { createHash, randomUUID } from "node:crypto";
+import { requireLabMode } from "../lab-mode";
 
 export interface HSMOperation {
   operationId: string;
@@ -55,6 +59,7 @@ export async function signHSM(params: {
   payload: string;
   keyId?: string;
 }): Promise<HSMOperation> {
+  requireLabMode("HSM-SIMULATOR");
   const startedAt = Date.now();
   const payloadHash = createHash("sha256").update(params.payload).digest("hex");
   const keyId = params.keyId || `hsm-${params.type}-v1`;

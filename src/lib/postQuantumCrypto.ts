@@ -7,7 +7,11 @@
  * 2. ML-DSA-87 (Dilithium): Firmas digitales basadas en redes reticulares (lattice-based).
  * 3. SLH-DSA-128s (SPHINCS+): Firmas poscuánticas basadas en árboles de desbordamiento de hash.
  * 4. LITLE 32 Gates: Matriz de atestación cuántica de 32 compuertas lógicas.
+ *
+ * SEGURIDAD: Todas las funciones de este archivo requieren FEATURE_LAB_MODE=true.
+ * En producción (FEATURE_LAB_MODE unset o "false"), lanzan PROTOTYPE_NOT_AVAILABLE.
  */
+import { requireLabMode, labDisclaimer } from "./lab-mode";
 
 export interface PQCKerPair {
   publicKey: string;
@@ -61,6 +65,7 @@ function generateHexHash(seed: string, length: number = 64): string {
  * Generates an ML-KEM-768 (Kyber) Post-Quantum Key Pair for session key encapsulation.
  */
 export function generateMLKEMKeyPair(identitySeed: string = "rdm-nodo-cero"): PQCKerPair {
+  requireLabMode("PQC-ML-KEM-768");
   const pub = `pqc_kyber768_pk_${generateHexHash(identitySeed + "_pk", 128)}`;
   const sec = `pqc_kyber768_sk_${generateHexHash(identitySeed + "_sk", 128)}`;
   return {
@@ -75,6 +80,7 @@ export function generateMLKEMKeyPair(identitySeed: string = "rdm-nodo-cero"): PQ
  * Encapsulates a shared secret using ML-KEM-768 (Kyber).
  */
 export function encapsulateMLKEM(publicKey: string): EncapsulatedCipher {
+  requireLabMode("PQC-ML-KEM-768");
   const ciphertext = `kyber_ct_${generateHexHash(publicKey + Date.now(), 256)}`;
   const sharedSecretHash = `sec_hash_${generateHexHash(ciphertext, 64)}`;
   return {
@@ -88,6 +94,7 @@ export function encapsulateMLKEM(publicKey: string): EncapsulatedCipher {
  * Signs payload data using ML-DSA-87 (Dilithium) Lattice Cryptography.
  */
 export function signMLDSA87(payload: string, secretKey: string = "default_sk"): PQCSignatureResult {
+  requireLabMode("PQC-ML-DSA-87");
   const digest = generateHexHash(payload, 64);
   const signatureHex = `mldsa87_sig_${generateHexHash(payload + secretKey, 192)}`;
   return {
@@ -104,6 +111,7 @@ export function signMLDSA87(payload: string, secretKey: string = "default_sk"): 
  * Signs payload data using SLH-DSA-128s (SPHINCS+) Stateless Hash Cryptography.
  */
 export function signSLHDSA128s(payload: string): PQCSignatureResult {
+  requireLabMode("PQC-SLH-DSA-128s");
   const digest = generateHexHash(payload, 64);
   const signatureHex = `slhdsa128s_sig_${generateHexHash(payload + "_sphincs", 192)}`;
   return {
@@ -120,6 +128,7 @@ export function signSLHDSA128s(payload: string): PQCSignatureResult {
  * Evaluates the 32 gates of the LITLE (Logical Intercept & Topological Lattice Engine) Quantum Matrix.
  */
 export function evaluateLitle32Gates(payloadSeed: string): LitleGateEvaluation[] {
+  requireLabMode("PQC-LITLE-32");
   const gateTypes: Array<LitleGateEvaluation["gateType"]> = [
     "HADAMARD",
     "CNOT",
@@ -147,6 +156,7 @@ export function evaluateLitle32Gates(payloadSeed: string): LitleGateEvaluation[]
  * Signs a BookPI Ledger or ARGUS audit block with dual ML-DSA-87 + SLH-DSA-128s PQC proofs.
  */
 export function signLedgerBlockPQC(blockId: string, dataHash: string) {
+  requireLabMode("PQC-LEDGER-SIGN");
   const mlDsa = signMLDSA87(`${blockId}:${dataHash}`);
   const slhDsa = signSLHDSA128s(`${blockId}:${dataHash}`);
   const gates = evaluateLitle32Gates(dataHash);
