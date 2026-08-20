@@ -30,7 +30,7 @@ export const config = {
     bodyParser: false,
     externalResolver: true,
   },
-  maxDuration: CONFIG.API_TIMEOUT_SECONDS,
+  maxDuration: 60,
 };
 
 // ─────────────────────────────────────────────────────────────
