@@ -1,29 +1,430 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-MX" dir="ltr">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Isabella Villaseñor AI — Enterprise Cognitive Architecture</title>
-    <meta name="description" content="Interfaz cognitiva empresarial de Isabella Villaseñor AI, integrando arquitectura híbrida CROWN, síntesis vocal de alta fidelidad y generación artística multimodal." />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
-    <!-- Idlen Pixel -->
-    <script>
-    !function(i,d,l,e,n){i.idlen=i.idlen||function(){
-    (i.idlen.q=i.idlen.q||[]).push([].slice.call(arguments))};
-    var s=d.createElement('script');s.async=1;
-    s.src='https://pixel.idlen.io/v1/pixel.js';
-    d.head.appendChild(s)}(window,document);
+    <!--
+      ==========================================================================
+      ISABELLA VILLASEÑOR AI
+      Enterprise Cognitive Architecture · Application Shell
+      Stack: Vite + React + TypeScript + Tailwind CSS v4
+      ==========================================================================
+    -->
 
-    idlen('init', '9dac0977-fcd0-4cd9-af41-ddc8a67edcde');
-    idlen('track', 'PageView');
+    <!--
+      ==========================================================================
+      SECURITY FALLBACK — CSP
+      --------------------------------------------------------------------------
+      Esta CSP sirve como una barrera adicional para despliegues estáticos.
+      En producción, replica y refuerza esta política como HTTP header.
+      Una CSP enviada por HTTP se aplica antes de procesar el documento y
+      ofrece capacidades que una meta CSP no puede proporcionar.
+      ==========================================================================
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        base-uri 'self';
+        object-src 'none';
+        script-src 'self' 'unsafe-inline' https://pixel.idlen.io;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com data:;
+        img-src 'self' data: blob: https:;
+        media-src 'self' blob: https:;
+        connect-src 'self' https://api.isabella.ai https://pixel.idlen.io;
+        worker-src 'self' blob:;
+        manifest-src 'self';
+        frame-src 'self' https:;
+        form-action 'self';
+        upgrade-insecure-requests;
+      "
+    />
+
+    <!--
+      ==========================================================================
+      DOCUMENT BASE
+      ==========================================================================
+    -->
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#040507" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="application-name" content="Isabella Villaseñor AI" />
+    <meta name="apple-mobile-web-app-title" content="Isabella AI" />
+    <meta name="format-detection" content="telephone=no, email=no, address=no" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!--
+      Permissions-Policy:
+      La app no solicita cámara, micrófono ni geolocalización desde el documento
+      base. Abre esas capacidades únicamente cuando un módulo específico lo
+      requiere y tu infraestructura ya tenga la política correspondiente.
+    -->
+    <meta
+      http-equiv="Permissions-Policy"
+      content="accelerometer=(), autoplay=(self), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), interest-cohort=()"
+    />
+
+    <!--
+      ==========================================================================
+      BRAND / SEO
+      ==========================================================================
+    -->
+    <title>Isabella Villaseñor AI — Inteligencia Soberana Empresarial</title>
+
+    <meta
+      name="description"
+      content="Isabella Villaseñor AI es una infraestructura cognitiva empresarial: inteligencia gobernable, trazabilidad verificable y privacidad por diseño."
+    />
+
+    <meta
+      name="keywords"
+      content="Isabella AI, inteligencia artificial empresarial, IA soberana, arquitectura cognitiva, gobernanza de IA, auditoría, automatización empresarial, TAMV"
+    />
+
+    <meta name="author" content="Isabella Villaseñor AI" />
+    <meta name="creator" content="Isabella Villaseñor AI" />
+    <meta name="publisher" content="Isabella Villaseñor AI" />
+
+    <!--
+      En preview, staging o entornos internos:
+      <meta name="robots" content="noindex, nofollow, noarchive" />
+    -->
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+
+    <!-- Sustituir por dominio final antes de publicar -->
+    <link rel="canonical" href="%VITE_PUBLIC_APP_URL%" />
+
+    <!--
+      ==========================================================================
+      PERFORMANCE / FONTS
+      ==========================================================================
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap"
+    />
+
+    <!--
+      ==========================================================================
+      PWA / ICONS
+      Crear estos recursos dentro de /public:
+      - public/favicon.ico
+      - public/favicon.svg
+      - public/apple-touch-icon.png         (180 x 180)
+      - public/icons/icon-192.png           (192 x 192)
+      - public/icons/icon-512.png           (512 x 512)
+      - public/site.webmanifest
+      ==========================================================================
+    -->
+    <link rel="manifest" href="/site.webmanifest" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!--
+      ==========================================================================
+      OPEN GRAPH
+      Assets previstos:
+      public/og/isabella-enterprise.jpg  (1200 x 630 px)
+      ==========================================================================
+    -->
+    <meta property="og:locale" content="es_MX" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Isabella Villaseñor AI" />
+    <meta property="og:url" content="%VITE_PUBLIC_APP_URL%" />
+
+    <meta
+      property="og:title"
+      content="Isabella Villaseñor AI — Inteligencia Soberana Empresarial"
+    />
+
+    <meta
+      property="og:description"
+      content="Infraestructura cognitiva para organizaciones que exigen inteligencia, control, trazabilidad y protección de contexto."
+    />
+
+    <meta
+      property="og:image"
+      content="%VITE_PUBLIC_APP_URL%/og/isabella-enterprise.jpg"
+    />
+
+    <meta
+      property="og:image:alt"
+      content="Isabella Villaseñor AI — Inteligencia Soberana Empresarial"
+    />
+
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <!--
+      ==========================================================================
+      X / TWITTER
+      ==========================================================================
+    -->
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <meta
+      name="twitter:title"
+      content="Isabella Villaseñor AI — Inteligencia Soberana Empresarial"
+    />
+
+    <meta
+      name="twitter:description"
+      content="Inteligencia gobernable, trazabilidad verificable y control soberano para organizaciones."
+    />
+
+    <meta
+      name="twitter:image"
+      content="%VITE_PUBLIC_APP_URL%/og/isabella-enterprise.jpg"
+    />
+
+    <meta
+      name="twitter:image:alt"
+      content="Isabella Villaseñor AI — Inteligencia Soberana Empresarial"
+    />
+
+    <!--
+      ==========================================================================
+      STRUCTURED DATA
+      Completa legalName, logo y perfiles oficiales al salir a producción.
+      ==========================================================================
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "@id": "%VITE_PUBLIC_APP_URL%/#organization",
+        "name": "Isabella Villaseñor AI",
+        "alternateName": "Isabella AI",
+        "url": "%VITE_PUBLIC_APP_URL%",
+        "description": "Infraestructura cognitiva empresarial orientada a inteligencia gobernable, trazabilidad verificable y privacidad por diseño.",
+        "logo": "%VITE_PUBLIC_APP_URL%/brand/isabella-logo.png",
+        "sameAs": []
+      }
     </script>
-    <!-- End Idlen Pixel -->
+
+    <!--
+      ==========================================================================
+      ADVERTISING / CAMPAIGN ANALYTICS
+      --------------------------------------------------------------------------
+      Principios:
+      1. El proveedor se carga únicamente tras consentimiento explícito.
+      2. No enviar prompts, respuestas, memorias, documentos, identidad sensible,
+         estado emocional, credenciales, ni información financiera.
+      3. El backend decide campañas y segmentos permitidos.
+      4. El pixel solo mide eventos autorizados: PageView, AdImpression,
+         AdClick, AdDismissed y CampaignInfoOpened.
+      ==========================================================================
+    -->
+    <script>
+      (function (window, document) {
+        "use strict";
+
+        var CONSENT_KEY = "isabella.consent.advertising.v1";
+        var PIXEL_SRC = "https://pixel.idlen.io/v1/pixel.js";
+        var PIXEL_ID = "%VITE_IDLEN_PIXEL_ID%";
+
+        var ads = {
+          initialized: false,
+          consent: "unknown",
+
+          readConsent: function () {
+            try {
+              return window.localStorage.getItem(CONSENT_KEY) || "unknown";
+            } catch (_) {
+              return "unknown";
+            }
+          },
+
+          writeConsent: function (value) {
+            try {
+              window.localStorage.setItem(CONSENT_KEY, value);
+            } catch (_) {
+              /* Storage may be unavailable; application remains functional. */
+            }
+          },
+
+          ensureQueue: function () {
+            window.idlen =
+              window.idlen ||
+              function () {
+                (window.idlen.q = window.idlen.q || []).push(
+                  Array.prototype.slice.call(arguments)
+                );
+              };
+          },
+
+          loadProvider: function () {
+            if (this.initialized || PIXEL_ID === "%VITE_IDLEN_PIXEL_ID%") {
+              return;
+            }
+
+            this.initialized = true;
+            this.ensureQueue();
+
+            var script = document.createElement("script");
+            script.async = true;
+            script.src = PIXEL_SRC;
+            script.referrerPolicy = "strict-origin-when-cross-origin";
+
+            script.onload = function () {
+              window.idlen("init", PIXEL_ID);
+              window.idlen("track", "PageView", {
+                product: "isabella-ai",
+                surface: "application",
+                consent: "advertising"
+              });
+            };
+
+            script.onerror = function () {
+              window.dispatchEvent(
+                new CustomEvent("isabella:analytics-error", {
+                  detail: { provider: "idlen" }
+                })
+              );
+            };
+
+            document.head.appendChild(script);
+          },
+
+          grant: function () {
+            this.consent = "granted";
+            this.writeConsent("granted");
+            this.loadProvider();
+
+            window.dispatchEvent(
+              new CustomEvent("isabella:consent-updated", {
+                detail: { category: "advertising", value: "granted" }
+              })
+            );
+          },
+
+          deny: function () {
+            this.consent = "denied";
+            this.writeConsent("denied");
+
+            window.dispatchEvent(
+              new CustomEvent("isabella:consent-updated", {
+                detail: { category: "advertising", value: "denied" }
+              })
+            );
+          },
+
+          track: function (eventName, properties) {
+            if (this.consent !== "granted") {
+              return;
+            }
+
+            this.ensureQueue();
+
+            window.idlen("track", eventName, {
+              product: "isabella-ai",
+              surface: "chat-sponsored-card",
+              ...properties
+            });
+          },
+
+          restore: function () {
+            this.consent = this.readConsent();
+
+            if (this.consent === "granted") {
+              this.loadProvider();
+            }
+          }
+        };
+
+        window.isabellaAds = ads;
+        ads.restore();
+      })(window, document);
+    </script>
   </head>
-  <body class="bg-[#030712] text-[#F8FAFC] antialiased selection:bg-blue-600 selection:text-white">
+
+  <body>
+    <!--
+      Accesibilidad:
+      El componente raíz debe renderizar un <main id="main-content"> real.
+      Este enlace permite saltar navegación recurrente con teclado.
+    -->
+    <a class="sr-only focus:not-sr-only" href="#main-content">
+      Ir al contenido principal
+    </a>
+
+    <!-- React / Vite application root -->
     <div id="root"></div>
+
+    <!--
+      Fallback para entornos con JavaScript desactivado.
+      Es intencionalmente simple: siempre debe ser legible sin CSS del bundle.
+    -->
+    <noscript>
+      <main
+        id="main-content"
+        style="
+          display: grid;
+          min-height: 100vh;
+          place-items: center;
+          margin: 0;
+          padding: 2rem;
+          background: #040507;
+          color: #fffefa;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          text-align: center;
+        "
+      >
+        <section style="width: min(100%, 40rem)">
+          <p
+            style="
+              margin: 0 0 0.75rem;
+              color: #e0bb5d;
+              font-size: 0.75rem;
+              font-weight: 800;
+              letter-spacing: 0.15em;
+              text-transform: uppercase;
+            "
+          >
+            Isabella Villaseñor AI
+          </p>
+
+          <h1
+            style="
+              margin: 0;
+              font-size: clamp(1.9rem, 6vw, 3.25rem);
+              letter-spacing: -0.05em;
+              line-height: 1.08;
+            "
+          >
+            Esta experiencia requiere JavaScript
+          </h1>
+
+          <p
+            style="
+              margin: 1rem 0 0;
+              color: #d9d3c8;
+              font-size: 1rem;
+              line-height: 1.65;
+            "
+          >
+            Activa JavaScript para acceder a Isabella, la infraestructura
+            cognitiva diseñada para operar con contexto, trazabilidad y control.
+          </p>
+        </section>
+      </main>
+    </noscript>
+
+    <!-- Vite entrypoint -->
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
