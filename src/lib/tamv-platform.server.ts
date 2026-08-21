@@ -1,4 +1,4 @@
-import { randomUUID, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { appendBlock } from "./bookpi.server";
@@ -137,6 +137,13 @@ function seedDevUser() {
 }
 seedDevUser();
 
+function signJwt(payload: Record<string, unknown>, secret: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = createHmac("sha256", secret).update(`${header}.${body}`).digest("base64url");
+  return `${header}.${body}.${sig}`;
+}
+
 export const tamvPlatformRouter = Router();
 
 tamvPlatformRouter.post("/api/v1/auth/signup", (req, res) => {
@@ -160,7 +167,18 @@ tamvPlatformRouter.post("/api/v1/auth/login", (req, res) => {
   if (!cred || !verifyPassword(parsed.data.password, cred.salt, cred.hash)) return res.status(401).json({ ok: false, error: "Invalid credentials" });
   const user = users.get(cred.userId)!;
   const proof = audit(user.id, "auth.login", { handle: user.handle });
-  res.json({ ok: true, user, proof, session: { mode: "stateless-jwt", issueTokenWith: "ISABELLA_AUTH_SECRET" } });
+  const secret = process.env.ISABELLA_AUTH_SECRET || "isabella-dev-secret-change-in-production";
+  const token = signJwt({ sub: user.id, tenantId: "nodo-cero-rdm", roles: user.roles, plan: user.membership, scopes: ["*"], iss: "isabella-auth", exp: Math.floor(Date.now() / 1000) + 86400 }, secret);
+  res.json({ ok: true, user, proof, token });
+});
+
+tamvPlatformRouter.post("/api/v1/auth/refresh", authenticate, (req, res) => {
+  const id = principalUserId(req);
+  const user = users.get(id);
+  if (!user) return res.status(401).json({ ok: false, error: "Unknown principal" });
+  const secret = process.env.ISABELLA_AUTH_SECRET || "isabella-dev-secret-change-in-production";
+  const token = signJwt({ sub: user.id, tenantId: "nodo-cero-rdm", roles: user.roles, plan: user.membership, scopes: ["*"], iss: "isabella-auth", exp: Math.floor(Date.now() / 1000) + 86400 }, secret);
+  res.json({ ok: true, token });
 });
 
 tamvPlatformRouter.post("/api/v1/auth/logout", authenticate, (req, res) => {

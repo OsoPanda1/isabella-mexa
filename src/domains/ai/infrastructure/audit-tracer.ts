@@ -73,6 +73,15 @@ export async function auditTrace(payload: AuditTraceParams): Promise<{
         entry.checksum ?? null,
         entry.createdAt
       );
+      import("./../../../lib/persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO audit_logs (id, tenantId, sessionId, actorId, eventType, payload, traceId, checksum, createdAt)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+           ON CONFLICT (id) DO NOTHING`,
+          [entry.id, entry.tenantId ?? null, entry.sessionId ?? null, entry.actorId ?? null,
+           entry.eventType, JSON.stringify(entry.payload), entry.traceId, entry.checksum ?? null, entry.createdAt]
+        ).catch(() => {})
+      ).catch(() => {});
     } catch {
       insertIntoBuffer(entry);
     }

@@ -84,6 +84,17 @@ export function commitQuantumBlock(params: {
         block.policyVersion, block.signerKeyId, block.teeVerified ? 1 : 0,
         block.createdAt, blockData,
       );
+      import("../persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO bookpi_blocks (blockHash, version, previousHash, requestId, tenantId, circuitHash, implementation, status, policyVersion, signerKeyId, teeVerified, createdAt, blockData)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+           ON CONFLICT (blockHash) DO NOTHING`,
+          [block.blockHash, block.version, block.previousHash, block.requestId,
+           block.tenantId, block.circuitHash, block.implementation, block.status,
+           block.policyVersion, block.signerKeyId, block.teeVerified ? 1 : 0,
+           block.createdAt, blockData]
+        ).catch(() => {})
+      ).catch(() => {});
       lastBlockHash = blockHash;
       return block;
     } catch { /* fall through to in-memory */ }

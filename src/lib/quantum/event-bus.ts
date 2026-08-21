@@ -84,6 +84,17 @@ export function emitQuantumEvent<T = unknown>(
         event.targetCore ?? null, event.occurredAt, event.policyVersion,
         event.payloadHash, event.previousEventHash ?? null, JSON.stringify(data),
       );
+      import("../persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO quantum_events (eventId, eventType, schemaVersion, traceId, requestId, tenantId, subjectId, originCore, targetCore, occurredAt, policyVersion, payloadHash, previousEventHash, data)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           ON CONFLICT (eventId) DO NOTHING`,
+          [event.eventId, event.eventType, event.schemaVersion, event.traceId,
+           event.requestId, event.tenantId, event.subjectId, event.originCore,
+           event.targetCore ?? null, event.occurredAt, event.policyVersion,
+           event.payloadHash, event.previousEventHash ?? null, JSON.stringify(data)]
+        ).catch(() => {})
+      ).catch(() => {});
     } catch { /* fall through */ }
   } else {
     fallbackLog.push(event as IsabellaEvent);

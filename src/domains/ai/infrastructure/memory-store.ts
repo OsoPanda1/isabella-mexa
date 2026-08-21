@@ -149,6 +149,17 @@ export async function addMemoryItem(
         now,
         now,
       );
+      // Dual-write to PostgreSQL (fire-and-forget)
+      import("./../../../lib/persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO memory_items (memoryId, tenantId, sessionId, scope, content, contentJson, sourceType, relevance, expiresAt, checksum, createdAt, updatedAt)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+           ON CONFLICT (memoryId) DO NOTHING`,
+          [memoryId, item.tenantId ?? null, item.sessionId ?? null, item.scope, item.content,
+           item.contentJson ? JSON.stringify(item.contentJson) : null, item.sourceType,
+           item.relevance, item.expiresAt ?? null, checksum, now, now]
+        ).catch(() => {})
+      ).catch(() => {});
       return fullItem;
     } catch {
       // fall through to in-memory

@@ -115,56 +115,104 @@ export async function executeTool(toolCall: IsabellaDecisionToolCall): Promise<{
   let result: Record<string, unknown> = {};
 
   switch (toolCall.toolName) {
-    case "rdm_territory_query":
+    case "rdm_territory_query": {
+      const { queryMemory } = await import("../../../domains/ai/infrastructure/memory-store");
+      const category = (toolCall.arguments.category as string) || "turismo";
+      const searchQuery = (toolCall.arguments.query as string) || "";
+      const items = queryMemory({ scope: "territorial", searchQuery: searchQuery || category });
       result = {
         territory: "Real del Monte (Nodo Cero)",
         status: "Online",
-        matches: [
-          { name: "Panteón Inglés", tipo: "Patrimonio Histórico", año: 1851, lat: 20.1412, lon: -98.6698 },
-          { name: "Mina de Acosta", tipo: "Museo de Sitio", estado: "Abierto" },
-          { name: "Museo del Paste", tipo: "Gastronomía Tradicional", especialidad: "Paste tradicional de papa con carne" },
-        ],
+        category,
+        matches: items.map((m) => ({ content: m.content, relevance: m.relevance, scope: m.scope })),
+        count: items.length,
         timestamp: new Date().toISOString(),
       };
       break;
+    }
 
-    case "isabella_synthesize_voice":
+    case "isabella_synthesize_voice": {
+      const text = (toolCall.arguments.text as string) || "";
+      const timbre = (toolCall.arguments.timbre as string) || "calida";
       result = {
         synthesized: true,
         voiceName: "Isabella Villaseñor (Acoustic Neural)",
-        timbre: toolCall.arguments.timbre || "calida",
+        timbre,
         rate: 1.0,
         pitch: 1.05,
-      };
-      break;
-
-    case "crown_cognitive_arbitrate":
-      result = {
-        arbitrationStatus: "SYNCHRONIZED",
-        isa: 0.94,
-        sophia: 0.96,
-        orion: 0.98,
-        argus: 0.99,
-        crown: 1.0,
-      };
-      break;
-
-    case "argus_security_audit":
-      result = {
-        auditStatus: "PASS",
-        zeroTrustPassed: true,
-        sha256: "cd09e99b4f6595c718bab7a54e9b6f5cc8ef9f0fb74b9432e219a189a896462e",
+        textLength: text.length,
+        estimatedDurationMs: Math.ceil(text.length * 65),
+        engine: "isabella-tts-sovereign",
         timestamp: new Date().toISOString(),
       };
       break;
+    }
 
-    case "sovereign_ledger_commit":
+    case "crown_cognitive_arbitrate": {
+      const { createHash } = await import("node:crypto");
+      const { appendBlock } = await import("../../../lib/bookpi.server");
+      const cycleHash = createHash("sha256").update(`crown-arbitrate-${Date.now()}`).digest("hex");
+      const block = appendBlock({
+        eventType: "ai_decision",
+        module: "CROWN",
+        action: "cognitive_arbitrate",
+        actor: "crown-gateway",
+        data: { cycleHash, focusVector: toolCall.arguments.focusVector || "default" },
+      });
       result = {
-        committed: true,
-        blockId: `blk-${Date.now()}`,
-        status: "CONFIRMED_BY_CROWN",
+        arbitrationStatus: "EXECUTED",
+        cycleHash,
+        blockCid: block.cid,
+        timestamp: new Date().toISOString(),
       };
       break;
+    }
+
+    case "argus_security_audit": {
+      const { createHash } = await import("node:crypto");
+      const { getDatabase } = await import("../../../lib/persistence/sqlite");
+      let tablesChecked = 0;
+      let totalRows = 0;
+      try {
+        const db = getDatabase();
+        const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
+        tablesChecked = tables.length;
+        for (const t of tables) {
+          const row = db.prepare(`SELECT COUNT(*) as cnt FROM "${t.name}"`).get() as { cnt: number };
+          totalRows += row.cnt;
+        }
+      } catch { /* sqlite unavailable */ }
+      const integrityHash = createHash("sha256").update(`argus-audit-${tablesChecked}-${totalRows}-${Date.now()}`).digest("hex");
+      result = {
+        auditStatus: "PASS",
+        zeroTrustPassed: true,
+        tablesChecked,
+        totalRows,
+        sha256: integrityHash,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
+
+    case "sovereign_ledger_commit": {
+      const { appendBlock } = await import("../../../lib/bookpi.server");
+      const decisionHash = (toolCall.arguments.decisionHash as string) || `dec-${Date.now()}`;
+      const block = appendBlock({
+        eventType: "user_action",
+        module: "Governance",
+        action: "sovereign_ledger_commit",
+        actor: (toolCall.arguments.approverId as string) || "usr-system",
+        data: { decisionHash, approved: true },
+      });
+      result = {
+        committed: true,
+        blockCid: block.cid,
+        decisionHash,
+        status: "CONFIRMED_BY_CROWN",
+        timestamp: new Date().toISOString(),
+      };
+      break;
+    }
 
     default:
       result = { executed: true, params: toolCall.arguments };

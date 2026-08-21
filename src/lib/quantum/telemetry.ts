@@ -30,6 +30,12 @@ export function incCounter(name: string, labels: Record<string, string> = {}, am
       } else {
         db.prepare("INSERT INTO telemetry_counters (name, labels, value, timestamp) VALUES (?, ?, ?, ?)").run(name, key, amount, new Date().toISOString());
       }
+      import("../persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO telemetry_counters (name, labels, value, timestamp) VALUES ($1,$2,$3,$4)`,
+          [name, key, amount, new Date().toISOString()]
+        ).catch(() => {})
+      ).catch(() => {});
       return;
     } catch { /* fall through to in-memory */ }
   }
@@ -43,6 +49,12 @@ export function observeHistogram(name: string, value: number): void {
     try {
       const db = getDatabase();
       db.prepare("INSERT INTO telemetry_histograms (name, value, timestamp) VALUES (?, ?, ?)").run(name, value, new Date().toISOString());
+      import("../persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO telemetry_histograms (name, value, timestamp) VALUES ($1,$2,$3)`,
+          [name, value, new Date().toISOString()]
+        ).catch(() => {})
+      ).catch(() => {});
       return;
     } catch { /* fall through */ }
   }
@@ -75,6 +87,12 @@ export function startSpan(params: {
         `INSERT INTO telemetry_spans (spanId, traceId, parentSpanId, operation, startTime, endTime, durationMs, status, attributes)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(span.spanId, span.traceId, span.parentSpanId ?? null, span.operation, span.startTime, null, null, span.status, JSON.stringify(span.attributes));
+      import("../persistence/postgres").then(({ pgExecute }) =>
+        pgExecute(
+          `INSERT INTO telemetry_spans (spanId, traceId, parentSpanId, operation, startTime, endTime, durationMs, status, attributes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+          [span.spanId, span.traceId, span.parentSpanId ?? null, span.operation, span.startTime, null, null, span.status, JSON.stringify(span.attributes)]
+        ).catch(() => {})
+      ).catch(() => {});
       return span;
     } catch { /* fall through */ }
   }
