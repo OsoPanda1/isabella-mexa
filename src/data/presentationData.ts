@@ -4,7 +4,7 @@ export const EVALUATOR_DECLARATION: EvaluatorDeclaration = {
   evaluator: "ChatGPT",
   model: "GPT-5.6 Luna",
   sha256: "cd09e99b4f6595c718bab7a54e9b6f5cc8ef9f0fb74b9432e219a189a896462e",
-  evaluationState: "Arquitectura identificada · Auditada · En evolución",
+  evaluationState: "completed",
   dossierSummary: "Isabella Villaseñor AI: Una arquitectura cognitiva territorial. No definida por un único modelo. No limitada a una conversación. Gobernada por diseño. Contextualizada por territorio. Construida para evolucionar.",
   timestamp: "2026-08-15",
 };

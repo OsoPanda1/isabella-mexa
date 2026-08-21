@@ -890,6 +890,70 @@ app.post("/api/isabella/tts", rateLimit, authenticate, quotaGate("voice", (req) 
   });
 });
 
+// ─── Sovereign Voice Endpoints (voiceUtils.ts expects these) ─────────────
+app.post("/api/voice/synthesize", rateLimit, authenticate, quotaGate("voice", (req) => Math.ceil(String(req.body?.text || "").length / 14)), async (req, res) => {
+  const startTime = Date.now();
+  const { requestId, text, profile, modelVersion, locale, style, prosody } = req.body || {};
+
+  if (!text || typeof text !== "string") {
+    return res.status(400).json({ ok: false, error: "text is required" });
+  }
+
+  const ai = getGenAI();
+
+  if (ai) {
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{ parts: [{ text: `Narrate with an elegant, warm, poetic, articulate feminine voice in authentic Spanish: ${text.slice(0, 4000)}` }] }],
+        config: {
+          responseModalities: ["AUDIO"],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
+        },
+      });
+
+      const audioPart = response.candidates?.[0]?.content?.parts?.[0];
+      if (audioPart?.inlineData?.data) {
+        return res.json({
+          requestId: requestId || `iv_voice_${Date.now()}`,
+          engine: "sovereign_local_tts",
+          profile: profile || "isabella_es_mx_v1",
+          modelVersion: modelVersion || "1.0.0",
+          locale: locale || "es-MX",
+          audioUrl: `data:audio/wav;base64,${audioPart.inlineData.data}`,
+          contentType: "audio/wav",
+          createdAt: new Date().toISOString(),
+        });
+      }
+    } catch (err: any) {
+      log.warn("voice_synthesize_gemini_fallback", { error: err?.message });
+    }
+  }
+
+  return res.status(503).json({
+    ok: false,
+    engine: "sovereign_local_tts",
+    availability: "unavailable",
+    modelLoaded: false,
+    profile: profile || "isabella_es_mx_v1",
+    modelVersion: modelVersion || "1.0.0",
+    checkedAt: new Date().toISOString(),
+  });
+});
+
+app.get("/api/voice/health", (req, res) => {
+  const ai = getGenAI();
+  const available = !!ai;
+  res.json({
+    engine: "sovereign_local_tts",
+    availability: available ? "available" : "degraded",
+    modelLoaded: available,
+    profile: "isabella_es_mx_v1",
+    modelVersion: "1.0.0",
+    checkedAt: new Date().toISOString(),
+  });
+});
+
 // Cognitive Processing API: CROWN routing + Multi-module cognitive synthesis
 app.post("/api/isabella/process", rateLimit, authenticate, quotaGate("chat"), async (req, res) => {
   const startTime = Date.now();

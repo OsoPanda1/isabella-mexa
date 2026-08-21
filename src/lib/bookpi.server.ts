@@ -4,8 +4,22 @@
  * and Post-Quantum Lattice & Hash Signatures (CRYSTALS-LATAMV).
  */
 import { createHash } from "node:crypto";
-import { signLedgerBlockPQC } from "./postQuantumCrypto";
 import { loadJsonArray, saveJsonArray } from "./durable-json.server";
+
+let signLedgerBlockPQC: (blockId: string, dataHash: string) => { mlDsaSignature: string; slhDsaSignature: string; litleGatesStatus: string } | null;
+
+let _pqcLoaded = false;
+function _loadPQC() {
+  if (_pqcLoaded) return;
+  _pqcLoaded = true;
+  import("./postQuantumCrypto").then((pqcModule) => {
+    signLedgerBlockPQC = (blockId, dataHash) => {
+      try { return pqcModule.signLedgerBlockPQC(blockId, dataHash); }
+      catch { return null; }
+    };
+  }).catch(() => { signLedgerBlockPQC = () => null; });
+}
+_loadPQC();
 
 export type BookPIEventType =
   | "http_request" | "http_response"
@@ -88,11 +102,13 @@ export function appendBlock(input: {
     nonce,
     hash,
     cid: makeCID(hash),
-    pqcSignature: {
-      mlDsaSignature: pqcProof.mlDsaSignature,
-      slhDsaSignature: pqcProof.slhDsaSignature,
-      litleGatesStatus: pqcProof.litleGatesStatus,
-    },
+    ...(pqcProof ? {
+      pqcSignature: {
+        mlDsaSignature: pqcProof.mlDsaSignature,
+        slhDsaSignature: pqcProof.slhDsaSignature,
+        litleGatesStatus: pqcProof.litleGatesStatus,
+      },
+    } : {}),
   };
 
   _prevHash = hash;

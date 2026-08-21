@@ -846,3 +846,63 @@ function isAbortError(error: unknown): boolean {
     error.name === "AbortError"
   );
 }
+
+/* =============================================================================
+   10. FEMALE VOICE HELPERS (used by CrownContext + VoiceStudioView)
+   ============================================================================= */
+
+const FEMALE_VOICE_HINTS = [
+  ...PREFERRED_LOCAL_VOICE_HINTS,
+  "mónica", "gabriela", "claudia", "patricia", "rosa", "maria", "ana",
+  "clara", "sofia", "valeria", "camila", "isabella", "fernanda", "diana",
+  "beatriz", "reina", "princesa", "google", "karen", "sabina",
+  "daniela", "alejandra", "greta", "helena", "norma",
+] as const;
+
+export function isStrictlyFemaleVoice(voice: SpeechSynthesisVoice): boolean {
+  const descriptor = normalizeDescriptor(`${voice.name} ${voice.voiceURI}`);
+  if (containsAnyHint(descriptor, EXCLUDED_LOCAL_VOICE_HINTS)) return false;
+  if (containsAnyHint(descriptor, FEMALE_VOICE_HINTS)) return true;
+  const lang = voice.lang.toLowerCase();
+  if (lang === "es-mx" || lang === "es-es" || lang.startsWith("es")) return true;
+  return false;
+}
+
+export function getAvailableFemaleVoices(
+  voices: readonly SpeechSynthesisVoice[]
+): SpeechSynthesisVoice[] {
+  return voices.filter(isStrictlyFemaleVoice);
+}
+
+export function selectBestFemaleVoice(
+  voices: readonly SpeechSynthesisVoice[],
+  preferredName?: string
+): { voice: SpeechSynthesisVoice | null; pitchMultiplier: number } {
+  if (voices.length === 0) return { voice: null, pitchMultiplier: 1 };
+
+  if (preferredName) {
+    const exact = voices.find(
+      (v) => v.name === preferredName && isStrictlyFemaleVoice(v)
+    );
+    if (exact) return { voice: exact, pitchMultiplier: 1 };
+  }
+
+  const female = getAvailableFemaleVoices(voices);
+  if (female.length === 0) return { voice: null, pitchMultiplier: 1 };
+
+  const scored = female
+    .map((v) => ({ voice: v, score: scoreBrowserVoice(v) }))
+    .filter((c) => Number.isFinite(c.score))
+    .sort((a, b) => b.score - a.score);
+
+  const best = scored[0];
+  if (!best) return { voice: null, pitchMultiplier: 1 };
+
+  const descriptor = normalizeDescriptor(best.voice.name);
+  const pitchMultiplier =
+    /deep|low|bass/.test(descriptor) ? 1.15 :
+    /high|soprano/.test(descriptor) ? 0.9 :
+    1.0;
+
+  return { voice: best.voice, pitchMultiplier };
+}

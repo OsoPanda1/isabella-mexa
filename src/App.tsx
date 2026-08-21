@@ -55,48 +55,59 @@ type ViewDefinition = {
  * Cada módulo complejo deja de pesar sobre el primer render.
  * Para mantener esta convención, cada archivo de vista debe exportar default.
  */
-const IsabellaTerminal = lazy(
-  () => import("./components/Terminal/IsabellaTerminal")
+const IsabellaTerminal = lazyNamed(
+  () => import("./components/Terminal/IsabellaTerminal"),
+  "IsabellaTerminal"
 );
 
-const IsabellaPresenceView = lazy(
-  () => import("./components/Presence/IsabellaPresenceView")
+const IsabellaPresenceView = lazyNamed(
+  () => import("./components/Presence/IsabellaPresenceView"),
+  "IsabellaPresenceView"
 );
 
-const TraceabilityDashboard = lazy(
-  () => import("./components/Traceability/TraceabilityDashboard")
+const TraceabilityDashboard = lazyNamed(
+  () => import("./components/Traceability/TraceabilityDashboard"),
+  "TraceabilityDashboard"
 );
 
-const ImageStudioView = lazy(
-  () => import("./components/Studio/ImageStudioView")
+const ImageStudioView = lazyNamed(
+  () => import("./components/Studio/ImageStudioView"),
+  "ImageStudioView"
 );
 
-const VoiceStudioView = lazy(
-  () => import("./components/Studio/VoiceStudioView")
+const VoiceStudioView = lazyNamed(
+  () => import("./components/Studio/VoiceStudioView"),
+  "VoiceStudioView"
 );
 
-const Cockpit = lazy(
-  () => import("./components/Dashboard/Cockpit")
+const Cockpit = lazyNamed(
+  () => import("./components/Dashboard/Cockpit"),
+  "Cockpit"
 );
 
-const SynapticFlowDiagram = lazy(
-  () => import("./components/Dashboard/SynapticFlowDiagram")
+const SynapticFlowDiagram = lazyNamed(
+  () => import("./components/Dashboard/SynapticFlowDiagram"),
+  "SynapticFlowDiagram"
 );
 
-const PresentationView = lazy(
-  () => import("./components/Presentation/PresentationView")
+const PresentationView = lazyNamed(
+  () => import("./components/Presentation/PresentationView"),
+  "PresentationView"
 );
 
-const IsabellaHubView = lazy(
-  () => import("./components/Hub/IsabellaHubView")
+const IsabellaHubView = lazyNamed(
+  () => import("./components/Hub/IsabellaHubView"),
+  "IsabellaHubView"
 );
 
-const CodexView = lazy(
-  () => import("./components/Codex/CodexView")
+const CodexView = lazyNamed(
+  () => import("./components/Codex/CodexView"),
+  "CodexView"
 );
 
-const CattleyaFinanceView = lazy(
-  () => import("./components/Dashboard/CattleyaFinanceView")
+const CattleyaFinanceView = lazyNamed(
+  () => import("./components/Dashboard/CattleyaFinanceView"),
+  "CattleyaFinanceView"
 );
 
 const QuantumMeshDashboard = lazy(
@@ -107,20 +118,24 @@ const QuantumMeshDashboard = lazy(
  * Los modales no bloquean el primer bundle.
  * Se importan al abrirse, no antes.
  */
-const IsabellaWelcomeModal = lazy(
-  () => import("./components/Welcome/IsabellaWelcomeModal")
+const IsabellaWelcomeModal = lazyNamed(
+  () => import("./components/Welcome/IsabellaWelcomeModal"),
+  "IsabellaWelcomeModal"
 );
 
-const IsabellaCinematicTrailer = lazy(
-  () => import("./components/Welcome/IsabellaCinematicTrailer")
+const IsabellaCinematicTrailer = lazyNamed(
+  () => import("./components/Welcome/IsabellaCinematicTrailer"),
+  "IsabellaCinematicTrailer"
 );
 
-const KeyboardShortcutsModal = lazy(
-  () => import("./components/Shortcuts/KeyboardShortcutsModal")
+const KeyboardShortcutsModal = lazyNamed(
+  () => import("./components/Shortcuts/KeyboardShortcutsModal"),
+  "KeyboardShortcutsModal"
 );
 
-const SecurityGovernanceModal = lazy(
-  () => import("./components/Security/SecurityGovernanceModal")
+const SecurityGovernanceModal = lazyNamed(
+  () => import("./components/Security/SecurityGovernanceModal"),
+  "SecurityGovernanceModal"
 );
 
 /*

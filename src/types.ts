@@ -125,31 +125,15 @@ export type SecuritySeverity = (typeof SECURITY_SEVERITIES)[number];
    ============================================================================ */
 
 export interface ModuleMetrics {
-  /**
-   * Rango válido: 0 a 100.
-   * Es un indicador de participación operativa, no una afirmación de consciencia.
-   */
   activation: Percentage;
-
-  /** Latencia observada del módulo en milisegundos. */
   latencyMs: Milliseconds;
-
-  /** Rango válido: 0 a 100; no equivale a certeza factual. */
   confidence: Percentage;
-
-  /**
-   * Ejemplo: "148 req/min".
-   * Para series temporales o agregación use una métrica estructurada en backend.
-   */
-  throughputLabel: string;
-
-  /** Rango válido: 0.0 a 1.0. */
+  throughputLabel?: string;
+  throughput?: string;
   temperature: Ratio;
-
   activeThreads: number;
   status: CognitiveModuleStatus;
-
-  observedAt: ISODateTime;
+  observedAt?: ISODateTime;
 }
 
 export interface CognitiveModuleParameters {
@@ -171,15 +155,17 @@ export interface CognitiveModule {
   role: string;
   description: string;
   corePillars: readonly string[];
-
-  /**
-   * La identidad visual NO vive aquí.
-   * El UI resuelve theme/tokens por `id`, por ejemplo:
-   * MODULE_PRESENTATION["ISA"].
-   */
+  themeColor?: {
+    primary: string;
+    border: string;
+    glow: string;
+    badge: string;
+    text: string;
+    lightBg: string;
+  };
   metrics: ModuleMetrics;
   parameters: CognitiveModuleParameters;
-  updatedAt: ISODateTime;
+  updatedAt?: ISODateTime;
 }
 
 export type CognitiveModuleMap = Readonly<
@@ -199,19 +185,14 @@ export type CognitiveModuleWeights = Readonly<{
 }>;
 
 export interface RoutingDecision {
-  decisionId: UUID;
+  decisionId?: UUID;
   primaryModule: CognitiveModuleId;
   moduleWeights: CognitiveModuleWeights;
-
-  /**
-   * Resumen sanitizado para interfaz y auditoría.
-   * No almacenar instrucciones, prompt ni razonamiento interno extenso.
-   */
-  routingSummary: string;
-
-  createdAt: ISODateTime;
-  requestId: UUID;
-  policyVersion: string;
+  routingSummary?: string;
+  routingRationale?: string;
+  createdAt?: ISODateTime;
+  requestId?: UUID;
+  policyVersion?: string;
 }
 
 /* ============================================================================
@@ -222,40 +203,40 @@ export type ArgusSafetyStatus = "CLEAR" | "FLAGGED" | "ELEVATED" | "BLOCKED";
 
 export interface ArgusSafetyTelemetry {
   status: ArgusSafetyStatus;
-  integrityScore: Percentage;
-  guardrailSummary: string;
-  evaluatedAt: ISODateTime;
+  integrityScore?: Percentage;
+  guardrailSummary?: string;
+  guardrailCheck?: string;
+  evaluatedAt?: ISODateTime;
 }
 
 export interface IsaResonanceTelemetry {
   emotionalTone: string;
-  empathyValence: Ratio;
-  focusSummary: string;
+  empathyValence?: Ratio;
+  focusSummary?: string;
+  coreFocus?: string;
 }
 
 export interface SophiaReasoningTelemetry {
-  logicDepthLabel: "shallow" | "standard" | "deep" | "extended";
-  epistemicCertainty: Percentage;
-  insightSummary: string;
+  logicDepthLabel?: "shallow" | "standard" | "deep" | "extended";
+  epistemicCertainty?: Percentage;
+  insightSummary?: string;
+  logicDepth?: string;
+  heuristicInsight?: string;
 }
 
 export interface OrionExecutionTelemetry {
   actionType: string;
-
-  /**
-   * Pasos resumidos, no instrucciones sensibles ni secretos operativos.
-   */
-  executionSteps: readonly string[];
-
-  resourceUtilizationLabel: string;
+  executionSteps?: readonly string[];
+  resourceUtilizationLabel?: string;
+  resourceUtilization?: string;
 }
 
 export interface CognitiveTelemetry {
-  traceId: UUID;
-  observedAt: ISODateTime;
-  argusSafety: ArgusSafetyTelemetry;
-  isaResonance: IsaResonanceTelemetry;
-  sophiaReasoning: SophiaReasoningTelemetry;
+  traceId?: UUID;
+  observedAt?: ISODateTime;
+  argusSafety?: ArgusSafetyTelemetry;
+  isaResonance?: IsaResonanceTelemetry;
+  sophiaReasoning?: SophiaReasoningTelemetry;
   orionExecution?: OrionExecutionTelemetry;
 }
 
@@ -277,20 +258,10 @@ export type IsabellaArchetype = (typeof ISABELLA_ARCHETYPES)[number];
 export interface IsabellaState {
   mood: string;
   emotionalArchetype: IsabellaArchetype;
-
-  /** Rango válido: 0.0 a 1.0. */
   cognitiveLoad: Ratio;
-
-  /** Rango válido: 0.0 a 1.0. */
   presenceIndex: Ratio;
-
-  /**
-   * Índice visual/experiencial interno.
-   * Nunca debe utilizarse como un dato personal o inferencia sobre la persona.
-   */
   feminineEleganceIndex: Ratio;
-
-  updatedAt: ISODateTime;
+  updatedAt?: ISODateTime;
 }
 
 /* ============================================================================
@@ -306,28 +277,21 @@ export const IMAGE_SOURCES = [
 
 export type GeneratedImageSource = (typeof IMAGE_SOURCES)[number];
 
-export type ImageAuthor = "isabella" | "user";
+export type ImageAuthor = "isabella" | "user" | "Isabella Villaseñor";
 
 export interface GeneratedImageItem {
   id: UUID;
-  assetUrl: URLString;
-
-  /**
-   * Solo una etiqueta o resumen del prompt apto para UI.
-   * El prompt original se conserva únicamente en backend si hay consentimiento.
-   */
-  promptSummary: string;
-
+  assetUrl?: URLString;
+  url?: URLString;
+  prompt?: string;
+  promptSummary?: string;
   style: string;
   aspectRatio: string;
-  createdAt: ISODateTime;
+  createdAt?: ISODateTime;
+  timestamp?: ISODateTime;
   author: ImageAuthor;
   source: GeneratedImageSource;
-
-  /**
-   * Para activos privados, usar URLs firmadas de corta duración.
-   */
-  visibility: "private" | "workspace" | "public";
+  visibility?: "private" | "workspace" | "public";
 }
 
 /* ============================================================================
@@ -377,13 +341,44 @@ export interface VoiceSettings {
 
 export interface BaseTimelineItem {
   id: UUID;
-  createdAt: ISODateTime;
+  createdAt?: ISODateTime;
+}
+
+/**
+ * TerminalMessage se modela como una interfaz plana con todos los campos
+ * opcionales excepto los comunes. Esto refleja el uso real en runtime:
+ * el código UI trata cada mensaje como un "bolsa" de propiedades opcionales.
+ */
+export interface TerminalMessage extends BaseTimelineItem {
+  kind?: string;
+  content?: string;
+  severity?: SecuritySeverity;
+  alertCode?: string;
+  resolutionHint?: string;
+
+  attachmentIds?: readonly UUID[];
+
+  latencyMs?: Milliseconds;
+  engine?: string;
+  isStreaming?: boolean;
+  routingDecision?: RoutingDecision;
+  cognitiveTelemetry?: CognitiveTelemetry;
+  isabellaState?: IsabellaState;
+  generatedImage?: GeneratedImageItem;
+  audioClipUrl?: URLString;
+
+  role?: string;
+  timestamp?: string;
+  sponsoredContent?: SponsoredContent;
 }
 
 export interface UserMessage extends BaseTimelineItem {
   kind: "user_message";
   content: string;
   attachmentIds?: readonly UUID[];
+  role?: string;
+  timestamp?: string;
+  isabellaState?: IsabellaState;
 }
 
 export interface IsabellaMessage extends BaseTimelineItem {
@@ -397,12 +392,17 @@ export interface IsabellaMessage extends BaseTimelineItem {
   isabellaState?: IsabellaState;
   generatedImage?: GeneratedImageItem;
   audioClipUrl?: URLString;
+  role?: string;
+  timestamp?: string;
+  sponsoredContent?: SponsoredContent;
 }
 
 export interface SystemMessage extends BaseTimelineItem {
   kind: "system_message";
   content: string;
   severity: SecuritySeverity;
+  role?: string;
+  timestamp?: string;
 }
 
 export interface ArgusAlertMessage extends BaseTimelineItem {
@@ -411,13 +411,9 @@ export interface ArgusAlertMessage extends BaseTimelineItem {
   severity: Exclude<SecuritySeverity, "info">;
   alertCode: string;
   resolutionHint?: string;
+  role?: string;
+  timestamp?: string;
 }
-
-export type TerminalMessage =
-  | UserMessage
-  | IsabellaMessage
-  | SystemMessage
-  | ArgusAlertMessage;
 
 /* ============================================================================
    10. PUBLICIDAD Y PATROCINIO
@@ -435,29 +431,29 @@ export type SponsoredContentStatus =
   | "blocked";
 
 export interface SponsoredContent {
-  kind: "sponsored_content";
-  id: UUID;
-  createdAt: ISODateTime;
+  kind?: "sponsored_content";
+  type?: string;
+  id?: UUID;
+  createdAt?: ISODateTime;
 
-  disclosureLabel: "Patrocinado";
-  advertiserName: string;
-  campaignId: UUID;
-  placement: "chat-sponsored-card";
+  disclosureLabel?: "Patrocinado";
+  advertiserName?: string;
+  campaignId?: UUID;
+  placement?: "chat-sponsored-card";
 
-  title: string;
-  description: string;
-  ctaText: string;
-  destinationUrl: URLString;
+  title?: string;
+  description?: string;
+  ctaText?: string;
+  ctaUrl?: URLString;
+  destinationUrl?: URLString;
 
   imageUrl?: URLString;
-  category: string;
+  category?: string;
+  adId?: string;
 
-  /**
-   * Identificadores técnicos, nunca contenido de conversación ni perfil sensible.
-   */
-  publisherId: string;
-  requestId: UUID;
-  impressionToken: string;
+  publisherId?: string;
+  requestId?: UUID;
+  impressionToken?: string;
 
   status: SponsoredContentStatus;
   requiresAdvertisingConsent: true;
@@ -490,7 +486,7 @@ export interface PresetProfile {
   tagline: string;
   description: string;
   weights: CognitiveModuleWeights;
-  isSystemProfile: boolean;
+  isSystemProfile?: boolean;
 }
 
 /* ============================================================================
@@ -516,22 +512,19 @@ export interface SecurityGovernanceLevel {
   cryptographicEnclave: CryptographicEnclaveState;
   dataBoundary: DataBoundary;
   sha256LedgerDigest: SHA256Digest;
-  assessedAt: ISODateTime;
+  assessedAt?: ISODateTime;
 }
 
 export interface InferenceTransitionEvent {
-  eventId: UUID;
-  fromMode: InferenceMode;
-  toMode: InferenceMode;
-
-  /**
-   * Resumen apto para observabilidad. No incluir datos de entrada.
-   */
-  reasonSummary: string;
-
-  occurredAt: ISODateTime;
-  sovereigntyPreserved: boolean;
-  latencyDeltaMs: Milliseconds;
+  eventId?: UUID;
+  fromMode?: InferenceMode;
+  toMode?: InferenceMode;
+  reasonSummary?: string;
+  reason?: string;
+  timestamp?: ISODateTime;
+  occurredAt?: ISODateTime;
+  sovereigntyPreserved?: boolean;
+  latencyDeltaMs?: Milliseconds;
   requestId?: UUID;
 }
 
@@ -572,7 +565,8 @@ export interface EvaluatorDeclaration {
   sha256: SHA256Digest;
   evaluationState: "pending" | "running" | "completed" | "failed";
   dossierSummary: string;
-  evaluatedAt: ISODateTime;
+  evaluatedAt?: ISODateTime;
+  timestamp?: ISODateTime;
 }
 
 /* ============================================================================
@@ -585,25 +579,19 @@ export interface CrownSystemState {
   isProcessing: boolean;
   activePreset: PresetProfileId;
   modules: CognitiveModuleMap;
-
-  /** Rango válido: 0.0 a 1.0; sólo para animación/presencia de interfaz. */
   activePulse: Ratio;
-
   soundEnabled: boolean;
   autoScroll: boolean;
   speechSynthesisEnabled: boolean;
   isSpeaking: boolean;
   isListening: boolean;
-
   activeView: ActiveViewId;
   totalTokensProcessed: number;
-  systemUptimeSeconds: number;
-
+  systemUptimeSeconds?: number;
   lastRoutingEvent: Nullable<RoutingDecision>;
   voiceSettings: VoiceSettings;
   isabellaMood: IsabellaState;
   activeHead: ActiveHead;
-
   inferenceMode: InferenceMode;
   securityGovernance: SecurityGovernanceLevel;
   lastInferenceTransition: Nullable<InferenceTransitionEvent>;
