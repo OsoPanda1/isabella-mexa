@@ -104,11 +104,33 @@ export function emitQuantumEvent<T = unknown>(
   const eventHandlers = handlers.get(eventType);
   if (eventHandlers) {
     for (const h of eventHandlers) {
-      try { h(event as IsabellaEvent); } catch { /* handler errors logged but don't break bus */ }
+      Promise.resolve(h(event as IsabellaEvent)).catch((err) => {
+        console.error(`[EventBus] Handler error for ${eventType}:`, err);
+      });
     }
   }
 
   return event;
+}
+
+export function getEventBusHealth() {
+  const allCounters: Record<string, number> = {};
+  let totalEvents = 0;
+  if (isSqlite()) {
+    try {
+      const db = getDatabase();
+      const countRow = db.prepare("SELECT COUNT(*) as cnt FROM quantum_events").get() as { cnt: number };
+      totalEvents = countRow.cnt;
+    } catch { /* ignore */ }
+  } else {
+    totalEvents = fallbackLog.length;
+  }
+  return {
+    totalEvents,
+    handlerCount: Array.from(handlers.values()).reduce((sum, s) => sum + s.size, 0),
+    lastEventHash,
+    healthy: true,
+  };
 }
 
 export function onQuantumEvent(eventType: string, handler: EventHandler): () => void {

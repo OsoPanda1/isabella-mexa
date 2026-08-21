@@ -101,6 +101,7 @@ function migrate(database: InstanceType<typeof BetterSqlite3>): void {
       value INTEGER,
       timestamp TEXT
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_counters_name_labels ON telemetry_counters(name, labels);
 
     CREATE TABLE IF NOT EXISTS telemetry_histograms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

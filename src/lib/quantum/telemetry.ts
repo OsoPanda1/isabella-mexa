@@ -24,12 +24,9 @@ export function incCounter(name: string, labels: Record<string, string> = {}, am
   if (isSqlite()) {
     try {
       const db = getDatabase();
-      const existing = db.prepare("SELECT id, value FROM telemetry_counters WHERE name = ? AND labels = ?").get(name, key) as { id: number; value: number } | undefined;
-      if (existing) {
-        db.prepare("UPDATE telemetry_counters SET value = ?, timestamp = ? WHERE id = ?").run(existing.value + amount, new Date().toISOString(), existing.id);
-      } else {
-        db.prepare("INSERT INTO telemetry_counters (name, labels, value, timestamp) VALUES (?, ?, ?, ?)").run(name, key, amount, new Date().toISOString());
-      }
+      db.prepare(
+        "INSERT INTO telemetry_counters (name, labels, value, timestamp) VALUES (?, ?, ?, ?) ON CONFLICT(name, labels) DO UPDATE SET value = value + excluded.value, timestamp = excluded.timestamp"
+      ).run(name, key, amount, new Date().toISOString());
       import("../persistence/postgres").then(({ pgExecute }) =>
         pgExecute(
           `INSERT INTO telemetry_counters (name, labels, value, timestamp) VALUES ($1,$2,$3,$4)`,

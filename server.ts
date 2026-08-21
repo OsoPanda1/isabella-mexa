@@ -1658,7 +1658,7 @@ app.get("/api/v1/kill-switch/status", authenticate, (_req, res) => {
   res.json({ ok: true, data: getKillSwitchStatus() });
 });
 
-app.post("/api/v1/kill-switch/activate", authenticate, (req, res) => {
+app.post("/api/v1/kill-switch/activate", authenticate, requireRole("admin"), (req, res) => {
   const { trigger, severity } = req.body;
   if (!trigger || typeof trigger !== "string") {
     res.status(400).json({ ok: false, error: "trigger string required" });
@@ -1668,7 +1668,7 @@ app.post("/api/v1/kill-switch/activate", authenticate, (req, res) => {
   res.json({ ok: true, data: event });
 });
 
-app.post("/api/v1/kill-switch/:eventId/step", authenticate, (req, res) => {
+app.post("/api/v1/kill-switch/:eventId/step", authenticate, requireRole("admin"), (req, res) => {
   const event = executeNextStep(req.params.eventId);
   if (!event) {
     res.status(404).json({ ok: false, error: "Kill-switch event not found or all steps completed" });
@@ -1677,7 +1677,7 @@ app.post("/api/v1/kill-switch/:eventId/step", authenticate, (req, res) => {
   res.json({ ok: true, data: event });
 });
 
-app.post("/api/v1/kill-switch/:eventId/resolve", authenticate, (req, res) => {
+app.post("/api/v1/kill-switch/:eventId/resolve", authenticate, requireRole("admin"), (req, res) => {
   const { approvedBy } = req.body;
   if (!approvedBy || typeof approvedBy !== "string") {
     res.status(400).json({ ok: false, error: "approvedBy string required" });
@@ -1770,9 +1770,11 @@ import {
 
 // --- Orchestrator ---
 app.post("/api/v1/core/agent/run", rateLimit, authenticate, async (req, res) => {
-  const { tenantId, userId, sessionId, input, channel } = req.body || {};
-  if (!input || !tenantId || !userId) {
-    return res.status(400).json({ ok: false, error: "Missing required fields: tenantId, userId, input." });
+  const { sessionId, input, channel } = req.body || {};
+  const tenantId = req.principal?.tenantId || "nodo-cero-rdm";
+  const userId = req.principal?.sub || "anonymous";
+  if (!input) {
+    return res.status(400).json({ ok: false, error: "Missing required field: input." });
   }
   try {
     const result = await runAgent({ tenantId, userId, sessionId, input, channel: channel || "api" });
@@ -1783,7 +1785,7 @@ app.post("/api/v1/core/agent/run", rateLimit, authenticate, async (req, res) => 
 });
 
 app.get("/api/v1/core/sessions", authenticate, (req, res) => {
-  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  const tenantId = String(req.principal?.tenantId || "nodo-cero-rdm");
   res.json({ ok: true, data: listSessions(tenantId) });
 });
 
@@ -1806,7 +1808,7 @@ app.post("/api/v1/core/plans", rateLimit, authenticate, (req, res) => {
 });
 
 app.get("/api/v1/core/plans", authenticate, (req, res) => {
-  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  const tenantId = String(req.principal?.tenantId || "nodo-cero-rdm");
   res.json({ ok: true, data: listPlans(tenantId) });
 });
 
@@ -1882,31 +1884,126 @@ app.post("/api/v1/core/data/delete", rateLimit, authenticate, (req, res) => {
 
 // --- Audit Receipts ---
 app.get("/api/v1/core/audit", authenticate, (req, res) => {
-  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  const tenantId = String(req.principal?.tenantId || "nodo-cero-rdm");
   const limit = Number(req.query.limit) || 50;
   res.json({ ok: true, data: getReceipts(tenantId, limit) });
 });
 
 app.get("/api/v1/core/audit/stats", authenticate, (req, res) => {
-  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  const tenantId = String(req.principal?.tenantId || "nodo-cero-rdm");
   res.json({ ok: true, data: getReceiptStats(tenantId) });
 });
 
 // --- Gateway ---
 app.post("/api/v1/core/gateway/message", rateLimit, authenticate, async (req, res) => {
-  const { channel, content, userId, tenantId, sessionId } = req.body || {};
+  const { channel, content, sessionId } = req.body || {};
+  const tenantId = req.principal?.tenantId || "nodo-cero-rdm";
+  const userId = req.principal?.sub || "anonymous";
   if (!channel || !content) {
     return res.status(400).json({ ok: false, error: "Missing channel or content." });
   }
   try {
     const result = await processMessageEvent({
-      channel, tenantId: tenantId || "nodo-cero-rdm", userId: userId || req.principal?.sub || "anonymous",
-      sessionId, content, timestamp: new Date().toISOString(),
+      channel, tenantId, userId, sessionId, content, timestamp: new Date().toISOString(),
     });
     res.json({ ok: true, data: result });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });
   }
+});
+
+// ============================================================================
+// DISTRIBUTED INGRESS MESH — 12-MODULE REDUNDANCY
+// ============================================================================
+
+import {
+  ingestAndDeliver,
+  getIngressMetrics,
+  getRoutingTable,
+} from "./src/core/ingress/ingress-distributor";
+import {
+  getHealthSnapshot,
+  getAlertLog,
+  isModuleHealthy,
+  getHealthyModules,
+  heartbeat,
+} from "./src/core/ingress/health-monitor";
+import {
+  partitionData,
+  getModuleLoadSnapshot,
+} from "./src/core/ingress/data-partitioner";
+import {
+  getCurrentDegradationMode,
+  getDegradationCapabilities,
+  getCircuitBreakerStates,
+} from "./src/core/ingress/resilience-protocol";
+
+app.post("/api/v1/ingress/deliver", rateLimit, authenticate, async (req, res) => {
+  const { dataType, payload, priority } = req.body || {};
+  if (!dataType || !payload) {
+    return res.status(400).json({ ok: false, error: "Missing dataType or payload." });
+  }
+  try {
+    const result = await ingestAndDeliver({
+      source: "api",
+      tenantId: req.principal?.tenantId || "nodo-cero-rdm",
+      userId: req.principal?.sub || "anonymous",
+      dataType,
+      payload,
+      priority,
+    });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+app.get("/api/v1/ingress/metrics", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getIngressMetrics() });
+});
+
+app.get("/api/v1/ingress/health", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getHealthSnapshot() });
+});
+
+app.get("/api/v1/ingress/health/:moduleId", authenticate, (req, res) => {
+  const h = getHealthSnapshot().modules.find((m) => m.moduleId === req.params.moduleId);
+  if (!h) return res.status(404).json({ ok: false, error: "Module not found." });
+  res.json({ ok: true, data: h });
+});
+
+app.get("/api/v1/ingress/alerts", authenticate, (req, res) => {
+  const limit = Number(req.query.limit) || 50;
+  res.json({ ok: true, data: getAlertLog(limit) });
+});
+
+app.get("/api/v1/ingress/routing-table", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getRoutingTable() });
+});
+
+app.get("/api/v1/ingress/load", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getModuleLoadSnapshot() });
+});
+
+app.get("/api/v1/ingress/degradation", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getDegradationCapabilities() });
+});
+
+app.get("/api/v1/ingress/circuit-breakers", authenticate, (_req, res) => {
+  res.json({ ok: true, data: getCircuitBreakerStates() });
+});
+
+app.post("/api/v1/ingress/partition", authenticate, (req, res) => {
+  const { dataType, payload } = req.body || {};
+  if (!dataType || !payload) {
+    return res.status(400).json({ ok: false, error: "Missing dataType or payload." });
+  }
+  res.json({ ok: true, data: partitionData({ dataType, payload }) });
+});
+
+app.post("/api/v1/ingress/heartbeat/:moduleId", authenticate, requireRole("system"), (req, res) => {
+  heartbeat(req.params.moduleId as any);
+  res.json({ ok: true });
 });
 
 // ============================================================================
