@@ -1739,6 +1739,177 @@ app.post("/api/v1/epistemic/classify", authenticate, (req, res) => {
 });
 
 // ============================================================================
+// ISABELLA CORE — 12 BETA MODULES ENDPOINTS
+// ============================================================================
+
+import {
+  runAgent,
+  listSessions,
+  getSessionHistory,
+  createPlan,
+  activatePlan,
+  listPlans,
+  listSkills,
+  registerSkill,
+  enableSkill,
+  listProviders,
+  processMessageEvent,
+} from "./src/core/index";
+import {
+  classifyRisk,
+  checkConsent,
+  grantConsent,
+  revokeConsent,
+  listConsents,
+  deleteUserData,
+  exportUserData,
+  auditReceipt,
+  getReceipts,
+  getReceiptStats,
+} from "./src/governance/index";
+
+// --- Orchestrator ---
+app.post("/api/v1/core/agent/run", rateLimit, authenticate, async (req, res) => {
+  const { tenantId, userId, sessionId, input, channel } = req.body || {};
+  if (!input || !tenantId || !userId) {
+    return res.status(400).json({ ok: false, error: "Missing required fields: tenantId, userId, input." });
+  }
+  try {
+    const result = await runAgent({ tenantId, userId, sessionId, input, channel: channel || "api" });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+app.get("/api/v1/core/sessions", authenticate, (req, res) => {
+  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  res.json({ ok: true, data: listSessions(tenantId) });
+});
+
+app.get("/api/v1/core/sessions/:sessionId/messages", authenticate, (req, res) => {
+  res.json({ ok: true, data: getSessionHistory(req.params.sessionId) });
+});
+
+// --- Planner ---
+app.post("/api/v1/core/plans", rateLimit, authenticate, (req, res) => {
+  const { name, description, goal, steps, tenantId } = req.body || {};
+  if (!name || !goal || !steps) {
+    return res.status(400).json({ ok: false, error: "Missing required fields: name, goal, steps." });
+  }
+  const plan = createPlan({
+    tenantId: tenantId || req.principal?.tenantId || "nodo-cero-rdm",
+    userId: req.principal?.sub || "anonymous",
+    name, description: description || "", goal, steps,
+  });
+  res.status(201).json({ ok: true, data: plan });
+});
+
+app.get("/api/v1/core/plans", authenticate, (req, res) => {
+  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  res.json({ ok: true, data: listPlans(tenantId) });
+});
+
+app.post("/api/v1/core/plans/:planId/activate", authenticate, (req, res) => {
+  const plan = activatePlan(req.params.planId);
+  if (!plan) return res.status(404).json({ ok: false, error: "Plan not found." });
+  res.json({ ok: true, data: plan });
+});
+
+// --- Skills ---
+app.get("/api/v1/core/skills", authenticate, (req, res) => {
+  const category = String(req.query.category || undefined);
+  res.json({ ok: true, data: listSkills(category || undefined) });
+});
+
+app.post("/api/v1/core/skills", rateLimit, authenticate, (req, res) => {
+  const skill = registerSkill(req.body || {});
+  res.status(201).json({ ok: true, data: skill });
+});
+
+app.post("/api/v1/core/skills/:skillId/enable", authenticate, (req, res) => {
+  res.json({ ok: enableSkill(req.params.skillId) });
+});
+
+// --- Providers ---
+app.get("/api/v1/core/providers", authenticate, (_req, res) => {
+  res.json({ ok: true, data: listProviders() });
+});
+
+// --- Safety ---
+app.post("/api/v1/core/classify-risk", authenticate, (req, res) => {
+  const { input, channel } = req.body || {};
+  if (!input) return res.status(400).json({ ok: false, error: "Missing input." });
+  res.json({ ok: true, data: classifyRisk(input, channel || "api") });
+});
+
+// --- Consent ---
+app.post("/api/v1/core/consent/grant", rateLimit, authenticate, (req, res) => {
+  const { scope, purpose, expiresAt } = req.body || {};
+  if (!scope || !purpose) return res.status(400).json({ ok: false, error: "Missing scope or purpose." });
+  const consent = grantConsent({
+    tenantId: req.principal?.tenantId || "nodo-cero-rdm",
+    userId: req.principal?.sub || "anonymous",
+    scope, purpose, expiresAt,
+  });
+  res.status(201).json({ ok: true, data: consent });
+});
+
+app.post("/api/v1/core/consent/revoke", rateLimit, authenticate, (req, res) => {
+  const { consentId } = req.body || {};
+  if (!consentId) return res.status(400).json({ ok: false, error: "Missing consentId." });
+  const revoked = revokeConsent(req.principal?.tenantId || "nodo-cero-rdm", req.principal?.sub || "anonymous", consentId);
+  res.json({ ok: revoked });
+});
+
+app.get("/api/v1/core/consent", authenticate, (req, res) => {
+  res.json({
+    ok: true,
+    data: listConsents(req.principal?.tenantId || "nodo-cero-rdm", req.principal?.sub || "anonymous"),
+  });
+});
+
+// --- Data Rights ---
+app.get("/api/v1/core/data/export", authenticate, (req, res) => {
+  const data = exportUserData(req.principal?.tenantId || "nodo-cero-rdm", req.principal?.sub || "anonymous");
+  res.json({ ok: true, data });
+});
+
+app.post("/api/v1/core/data/delete", rateLimit, authenticate, (req, res) => {
+  const result = deleteUserData(req.principal?.tenantId || "nodo-cero-rdm", req.principal?.sub || "anonymous");
+  res.json({ ok: true, data: result });
+});
+
+// --- Audit Receipts ---
+app.get("/api/v1/core/audit", authenticate, (req, res) => {
+  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  const limit = Number(req.query.limit) || 50;
+  res.json({ ok: true, data: getReceipts(tenantId, limit) });
+});
+
+app.get("/api/v1/core/audit/stats", authenticate, (req, res) => {
+  const tenantId = String(req.query.tenantId || req.principal?.tenantId || "nodo-cero-rdm");
+  res.json({ ok: true, data: getReceiptStats(tenantId) });
+});
+
+// --- Gateway ---
+app.post("/api/v1/core/gateway/message", rateLimit, authenticate, async (req, res) => {
+  const { channel, content, userId, tenantId, sessionId } = req.body || {};
+  if (!channel || !content) {
+    return res.status(400).json({ ok: false, error: "Missing channel or content." });
+  }
+  try {
+    const result = await processMessageEvent({
+      channel, tenantId: tenantId || "nodo-cero-rdm", userId: userId || req.principal?.sub || "anonymous",
+      sessionId, content, timestamp: new Date().toISOString(),
+    });
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
+// ============================================================================
 // MCP HUB ENDPOINTS
 // ============================================================================
 
