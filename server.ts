@@ -39,6 +39,7 @@ import {
   QuantumExecuteSchema,
 } from "./src/lib/api-contracts";
 import { createLogger } from "./src/lib/logger";
+import { getPgPool, runPostgresMigration, pgHealthCheck } from "./src/lib/persistence/postgres";
 import {
   activateKillSwitch,
   executeNextStep,
@@ -1712,6 +1713,18 @@ async function startServer() {
   
   // Bootstrap canonical documents into the registry
   await bootstrapCanonicalDocuments();
+
+  // Initialize PostgreSQL via Supabase Pooler (if POSTGRES_URL set)
+  const pg = getPgPool();
+  if (pg) {
+    try {
+      await runPostgresMigration();
+      const healthy = await pgHealthCheck();
+      log.info("postgres_status", { healthy, host: process.env.POSTGRES_HOST || "unknown" });
+    } catch (err: any) {
+      log.warn("postgres_init_failed", { error: err.message });
+    }
+  }
 
   // Start automation mesh monitoring (self-healing)
   startMonitoring();

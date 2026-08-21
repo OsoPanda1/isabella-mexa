@@ -82,6 +82,7 @@ export const IsabellaHubView: React.FC = () => {
   const fetchAuditLogs = async () => {
     try {
       const res = await fetch("/api/v1/isabella/audit?limit=50");
+      if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.logs)) {
         setAuditLogs(data.logs);
@@ -92,6 +93,7 @@ export const IsabellaHubView: React.FC = () => {
   const fetchMemories = async () => {
     try {
       const res = await fetch("/api/v1/isabella/memory");
+      if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.memories)) {
         setMemories(data.memories);
@@ -102,6 +104,7 @@ export const IsabellaHubView: React.FC = () => {
   const fetchTools = async () => {
     try {
       const res = await fetch("/api/v1/isabella/tools");
+      if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.tools)) {
         setTools(data.tools);
@@ -142,6 +145,7 @@ export const IsabellaHubView: React.FC = () => {
         }),
       });
 
+      if (!res.ok) return;
       const data = await res.json();
       if (data.ok && data.decision) {
         setLastDecision(data.decision);
@@ -218,6 +222,11 @@ export const IsabellaHubView: React.FC = () => {
         }),
       });
 
+      if (!res.ok) {
+        setToolExecutionResult({ error: `Tool execution failed: HTTP ${res.status}` });
+        return;
+      }
+
       const data = await res.json();
       setToolExecutionResult(data);
       soundManager.playSuccess();
@@ -246,6 +255,7 @@ export const IsabellaHubView: React.FC = () => {
         }),
       });
 
+      if (!res.ok) return;
       const data = await res.json();
       if (data.ok) {
         setNewMemContent("");

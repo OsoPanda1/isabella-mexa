@@ -713,6 +713,10 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
           body: JSON.stringify({ prompt, style, aspectRatio }),
         });
 
+        if (!response.ok) {
+          throw new Error(`Image generation failed: HTTP ${response.status}`);
+        }
+
         const data = await response.json();
         if (data.success && data.image) {
           const newImg: GeneratedImageItem = data.image;
@@ -799,6 +803,10 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
             },
           }),
         });
+
+        if (!response.ok) {
+          throw new Error(`CROWN process failed: HTTP ${response.status}`);
+        }
 
         const result = await response.json();
         const payload = result.data || {};

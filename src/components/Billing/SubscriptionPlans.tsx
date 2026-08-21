@@ -33,7 +33,10 @@ export const SubscriptionPlans: React.FC = () => {
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/v1/billing/plans", { signal: controller.signal })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Billing plans failed: HTTP ${res.status}`);
+        return res.json();
+      })
       .then(setBilling)
       .catch(() => undefined);
     return () => controller.abort();

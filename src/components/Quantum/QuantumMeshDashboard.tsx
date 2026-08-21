@@ -93,6 +93,10 @@ export const QuantumMeshDashboard: React.FC = () => {
   const fetchMesh = useCallback(async () => {
     try {
       const res = await fetch("/api/v1/quantum/mesh/status");
+      if (!res.ok) {
+        setError(`Mesh status failed: HTTP ${res.status}`);
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         setMesh(data.mesh);
