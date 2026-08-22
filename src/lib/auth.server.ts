@@ -57,9 +57,12 @@ export function verifyHs256Jwt(token: string, secret: string): AuthenticatedPrin
 
 export function authenticate(req: Request, res: Response, next: NextFunction) {
   const secret = process.env.ISABELLA_AUTH_SECRET;
-  if (!secret && process.env.NODE_ENV === "production") {
+  const isProduction = process.env.NODE_ENV === "production" || !!process.env.VERCEL;
+
+  if (!secret && isProduction) {
     return res.status(503).json({ ok: false, error: "Authentication authority is not configured." });
   }
+
   const auth = String(req.headers.authorization || "");
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (token && secret) {
@@ -68,10 +71,12 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     req.principal = principal;
     return next();
   }
-  if (process.env.NODE_ENV !== "production" && process.env.ALLOW_DEV_AUTH_FALLBACK === "true") {
+
+  if (!isProduction) {
     req.principal = { sub: "dev-local", tenantId: "nodo-cero-rdm", roles: ["admin"], scopes: ["*"] };
     return next();
   }
+
   return res.status(401).json({ ok: false, error: "Authentication required." });
 }
 

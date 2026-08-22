@@ -2041,6 +2041,12 @@ async function startServer() {
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
+    app.post("*", (req, res) => {
+      res.status(404).json({ ok: false, error: "API route not found" });
+    });
+    app.all("*", (req, res) => {
+      res.status(405).json({ ok: false, error: "Method not allowed", allowed: "GET, POST" });
+    });
   }
   
   // Bootstrap canonical documents into the registry

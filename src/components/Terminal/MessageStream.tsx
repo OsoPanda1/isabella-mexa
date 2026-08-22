@@ -20,6 +20,7 @@ import {
   Palette,
 } from "lucide-react";
 import { soundManager } from "../../utils/soundEffects";
+import { authFetch } from "../../lib/auth-client";
 
 interface MessageStreamProps {
   messages: TerminalMessage[];
@@ -238,9 +239,8 @@ export const MessageStream: React.FC<MessageStreamProps> = ({ messages }) => {
                         try { window.idlen("click", sc.adId); } catch { /* pixel not loaded */ }
                       }
                       // Server-side: reliable click tracking via Idlen SDK
-                      fetch("/api/v1/idlen/click", {
+                      authFetch("/api/v1/idlen/click", {
                         method: "POST",
-                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                           adId: sc.adId,
                           publisherId: sc.publisherId,

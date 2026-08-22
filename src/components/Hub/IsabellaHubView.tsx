@@ -38,6 +38,7 @@ import {
 } from "../../contracts/isabella";
 
 import { IsabellaAgent, AgentSessionInfo, AgentChatResponse } from "../../lib/isabella-agent-sdk";
+import { authFetch } from "../../lib/auth-client";
 
 type HubSubTab = "perception_runner" | "agent_sdk" | "audit_trail" | "memory_scopes" | "tools_catalog" | "sql_migrations" | "blueprint";
 
@@ -81,7 +82,7 @@ export const IsabellaHubView: React.FC = () => {
   // Load live data from API
   const fetchAuditLogs = async () => {
     try {
-      const res = await fetch("/api/v1/isabella/audit?limit=50");
+      const res = await authFetch("/api/v1/isabella/audit?limit=50");
       if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.logs)) {
@@ -92,8 +93,7 @@ export const IsabellaHubView: React.FC = () => {
 
   const fetchMemories = async () => {
     try {
-      const res = await fetch("/api/v1/isabella/memory");
-      if (!res.ok) return;
+      const res = await authFetch("/api/v1/isabella/memory");      if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.memories)) {
         setMemories(data.memories);
@@ -103,7 +103,7 @@ export const IsabellaHubView: React.FC = () => {
 
   const fetchTools = async () => {
     try {
-      const res = await fetch("/api/v1/isabella/tools");
+      const res = await authFetch("/api/v1/isabella/tools");
       if (!res.ok) return;
       const data = await res.json();
       if (data.ok && Array.isArray(data.tools)) {
@@ -133,9 +133,8 @@ export const IsabellaHubView: React.FC = () => {
         payload.toolName = selectedToolToRequest;
       }
 
-      const res = await fetch("/api/v1/isabella", {
+      const res = await authFetch("/api/v1/isabella", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           inputType,
           payload,
@@ -213,9 +212,8 @@ export const IsabellaHubView: React.FC = () => {
         parsedArgs = JSON.parse(toolSandboxArgs);
       } catch {}
 
-      const res = await fetch("/api/v1/isabella/tools/execute", {
+      const res = await authFetch("/api/v1/isabella/tools/execute", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toolName: selectedToolForSandbox,
           arguments: parsedArgs,
@@ -244,9 +242,8 @@ export const IsabellaHubView: React.FC = () => {
 
     setIsAddingMem(true);
     try {
-      const res = await fetch("/api/v1/isabella/memory", {
+      const res = await authFetch("/api/v1/isabella/memory", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: newMemContent,
           scope: newMemScope,

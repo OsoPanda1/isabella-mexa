@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Activity, Shield, Cpu, Zap, Database, Lock, Network, AlertTriangle, CheckCircle, XCircle, Clock, Server, GitBranch, Eye, BarChart3, Radio } from "lucide-react";
+import { authFetch } from "../../lib/auth-client";
 
 interface MeshStatus {
   deviceRegistry: Array<{
@@ -92,7 +93,7 @@ export const QuantumMeshDashboard: React.FC = () => {
 
   const fetchMesh = useCallback(async () => {
     try {
-      const res = await fetch("/api/v1/quantum/mesh/status");
+      const res = await authFetch("/api/v1/quantum/mesh/status");
       if (!res.ok) {
         setError(`Mesh status failed: HTTP ${res.status}`);
         return;

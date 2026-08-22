@@ -38,7 +38,7 @@ export const generateAuditId = (): string => {
 
 /**
  * Intercepts and wraps standard fetch requests for the Gemini API,
- * applying prompt sanitization and injecting mandatory audit headers.
+ * applying prompt sanitization, injecting mandatory audit headers, and auth tokens.
  */
 export const isabellaFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   // 1. Intercept and sanitize prompt if present in JSON body
@@ -47,7 +47,6 @@ export const isabellaFetch = async (url: string, options: RequestInit = {}): Pro
       const parsedBody = JSON.parse(options.body);
       let sanitized = false;
       
-      // Check common prompt fields in Isabella architecture
       if (parsedBody.prompt && typeof parsedBody.prompt === 'string') {
         parsedBody.prompt = sanitizePrompt(parsedBody.prompt);
         sanitized = true;
@@ -56,7 +55,7 @@ export const isabellaFetch = async (url: string, options: RequestInit = {}): Pro
         parsedBody.input = sanitizePrompt(parsedBody.input);
         sanitized = true;
       }
-      if (parsedBody.text && typeof parsedBody.text === 'string') { // For TTS
+      if (parsedBody.text && typeof parsedBody.text === 'string') {
         parsedBody.text = sanitizePrompt(parsedBody.text);
         sanitized = true;
       }
@@ -66,19 +65,33 @@ export const isabellaFetch = async (url: string, options: RequestInit = {}): Pro
       }
     } catch (e) {
       if (e instanceof Error && e.message.includes('[ARGUS-SECURITY-INTERCEPT]')) {
-        throw e; // Rethrow security exceptions
+        throw e;
       }
-      // If it's not JSON or parsing fails, continue normally
     }
   }
 
-  // 2. Inject Mandatory X-Isabella-Audit-ID header
+  // 2. Inject auth token + mandatory headers
   const headers = new Headers(options.headers || {});
+
+  let token: string | null = null;
+  try {
+    token = localStorage.getItem("isabella_jwt_token");
+    if (token) {
+      const expiry = localStorage.getItem("isabella_jwt_expiry");
+      if (expiry && Date.now() >= Number(expiry)) {
+        token = null;
+        localStorage.removeItem("isabella_jwt_token");
+        localStorage.removeItem("isabella_jwt_expiry");
+      }
+    }
+  } catch { /* ignore */ }
+
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   if (!headers.has("X-Isabella-Audit-ID")) {
     headers.set("X-Isabella-Audit-ID", generateAuditId());
   }
-  
-  // Set default content type if not present
   if (!headers.has("Content-Type") && options.method && options.method !== "GET") {
     headers.set("Content-Type", "application/json");
   }

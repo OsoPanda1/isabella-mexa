@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Crown, Sparkles, ShieldCheck, Zap } from "lucide-react";
+import { authFetch } from "../../lib/auth-client";
 
 interface PlanDto {
   id: string;
@@ -32,7 +33,7 @@ export const SubscriptionPlans: React.FC = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/v1/billing/plans", { signal: controller.signal })
+    authFetch("/api/v1/billing/plans", { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error(`Billing plans failed: HTTP ${res.status}`);
         return res.json();

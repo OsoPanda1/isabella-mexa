@@ -17,6 +17,7 @@ import {
 import { soundManager } from "../utils/soundEffects";
 import { selectBestFemaleVoice } from "../utils/voiceUtils";
 import { ISABELLA_AVATAR_PRIMARY } from "../data/isabellaAvatar";
+import { authFetch } from "../lib/auth-client";
 
 // Preset configurations
 export const PRESET_PROFILES: Record<PresetProfileId, PresetProfile> = {
@@ -707,9 +708,8 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
       soundManager.playSynapseRoute();
 
       try {
-        const response = await fetch("/api/isabella/generate-image", {
+        const response = await authFetch("/api/isabella/generate-image", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ prompt, style, aspectRatio }),
         });
 
@@ -786,9 +786,8 @@ Puedes conversar conmigo, pedirme que sintetice voz en tiempo real, me solicites
       }
 
       try {
-        const response = await fetch("/api/isabella/process", {
+        const response = await authFetch("/api/isabella/process", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             input: trimmed,
             history: messages.slice(-8),
